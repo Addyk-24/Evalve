@@ -6,7 +6,7 @@ from agno.agent import Agent, AgentKnowledge
 from agno.models.openai import OpenAIChat
 from agno.team.team import Team
 
-
+from .system_prompt import system_prompt
 
 from agno.knowledge.pdf import PDFKnowledgeBase, PDFReader
 from agno.knowledge.website import WebsiteKnowledgeBase
@@ -30,6 +30,10 @@ from datetime import datetime
 from pathlib import Path
 import numpy as np
 from bs4 import BeautifulSoup
+
+# SYSTEM PROMPTS
+insight_system_prompt = system_prompt.startup_insight
+knowledge_system_prompt = system_prompt.Startup_Knowledge
 
 SUPABASE_DB_PASSWORD = os.environ.get("SUPABASE_DB_PASSWORD")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
@@ -202,6 +206,7 @@ class Evalve:
 
     """Main RAG agent that combines all components"""
     def __init__ (self):
+        self.insight_prompt = insight_system_prompt
         # Initialize core components
         self.db_manager = DatabaseManager(SUPABASE_URL, SUPABASE_KEY)
         # self.memory_graph = MemoryGraph()
@@ -213,6 +218,7 @@ class Evalve:
         # self.hybrid_retriever = HybridRetriever(self.memory_graph, self.document_embedder, self.web_search)
         
         # Initialize AI agent
+    def main_agent(self):
         writer = Agent(
             name="Writer",
             role="Writes a high-quality article",
@@ -220,16 +226,7 @@ class Evalve:
                 "You are a senior writer for the New York Times. Given a topic and a list of URLs, "
                 "your goal is to write a high-quality NYT-worthy article on the topic."
             ),
-            instructions=[
-                "First read all urls using `read_article`."
-                "Then write a high-quality NYT-worthy article on the topic."
-                "The article should be well-structured, informative, engaging and catchy.",
-                "Ensure the length is at least as long as a NYT cover story -- at a minimum, 15 paragraphs.",
-                "Ensure you provide a nuanced and balanced opinion, quoting facts where possible.",
-                "Focus on clarity, coherence, and overall quality.",
-                "Never make up facts or plagiarize. Always provide proper attribution.",
-                "Remember: you are writing for the New York Times, so the quality of the article is important.",
-            ],
+            instructions=[self.insight_prompt],
             tools=[],
             add_datetime_to_instructions=True,
             # tools=[self.document_embedder, self.hybrid_retriever, self.web_search],
