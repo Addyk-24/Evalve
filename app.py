@@ -6,7 +6,7 @@ from agno.agent import Agent, AgentKnowledge
 from agno.models.openai import OpenAIChat
 from agno.team.team import Team
 
-from .system_prompt import system_prompt
+from Evalve.system_prompt.prompt import system_prompt
 
 from agno.knowledge.pdf import PDFKnowledgeBase, PDFReader
 from agno.knowledge.website import WebsiteKnowledgeBase
@@ -202,11 +202,12 @@ class ConversationMemory:
         return relevant_exchanges[:max_results]
 
 
-class Evalve:
+class EvalveAgent:
 
     """Main RAG agent that combines all components"""
     def __init__ (self):
         self.insight_prompt = insight_system_prompt
+        self.knowledge_prompt = knowledge_system_prompt
         # Initialize core components
         self.db_manager = DatabaseManager(SUPABASE_URL, SUPABASE_KEY)
         # self.memory_graph = MemoryGraph()
@@ -218,80 +219,73 @@ class Evalve:
         # self.hybrid_retriever = HybridRetriever(self.memory_graph, self.document_embedder, self.web_search)
         
         # Initialize AI agent
-    def main_agent(self):
-        writer = Agent(
-            name="Writer",
-            role="Writes a high-quality article",
+    def create_agents(self):
+        # Startup Insights Generator Agent
+        insights_generator = Agent(
+            name="StartupInsightsAnalyst",
+            role="Senior Investment Analyst for Indian Startups",
             description=(
-                "You are a senior writer for the New York Times. Given a topic and a list of URLs, "
-                "your goal is to write a high-quality NYT-worthy article on the topic."
+                "You are a senior investment analyst specializing in Indian startup evaluation. "
+                "Your goal is to generate comprehensive, data-driven insights about startups to help "
+                "investors make informed investment decisions in the Indian market."
             ),
-            instructions=[self.insight_prompt],
-            tools=[],
+            instructions=[self.insights_prompt],
+            tools=[],  # Add tools like web_search, document_analyzer, data_visualizer
             add_datetime_to_instructions=True,
-            # tools=[self.document_embedder, self.hybrid_retriever, self.web_search],
-            instructions=self._get_agent_instructions(),
-            show_tool_calls=False,
-            markdown=False
+            show_tool_calls=True,
+            markdown=True
         )
 
-        self.agent = Team(
-            name="Editor",
+        # Startup Knowledge Chatbot Agent  
+        startup_chatbot = Agent(
+            name="StartupConsultantChatbot",
+            role="Expert Startup Consultant for Interactive Queries",
+            description=(
+                "You are an expert startup consultant chatbot with deep knowledge of Indian startups. "
+                "Your goal is to provide detailed, interactive assistance to investors seeking to "
+                "understand specific startups through conversational queries."
+            ),
+            instructions=[self.knowledge_prompt],
+            tools=[],  # Add tools like web_search, knowledge_base, document_retriever
+            add_datetime_to_instructions=True,
+            show_tool_calls=False,
+            markdown=True
+        )
+
+        return insights_generator, startup_chatbot
+
+    def create_startup_analysis_team(self):
+        insights_generator, startup_chatbot = self.create_agents()
+        
+        # Create a coordinated team for comprehensive startup analysis
+        startup_analysis_team = Team(
+            name="StartupAnalysisTeam",
             mode="coordinate",
             model=OpenAIChat("gpt-4o"),
-            # model=llm,
-            members=[writer],
-            description="You are a senior NYT editor. Given a topic, your goal is to write a NYT worthy article.",
+            members=[insights_generator, startup_chatbot],
+            description=(
+                "You are a senior startup analysis team specializing in Indian startup evaluation. "
+                "Your goal is to provide comprehensive startup analysis and interactive investor support."
+            ),
             instructions=[
-                "First ask the search journalist to search for the most relevant URLs for that topic.",
-                "Then ask the writer to get an engaging draft of the article.",
-                "Edit, proofread, and refine the article to ensure it meets the high standards of the New York Times.",
-                "The article should be extremely articulate and well written. "
-                "Focus on clarity, coherence, and overall quality.",
-                "Remember: you are the final gatekeeper before the article is published, so make sure the article is perfect.",
+                "First, have the StartupInsightsAnalyst generate comprehensive investment insights for the startup.",
+                "Then, be ready to have the StartupConsultantChatbot answer any specific investor questions about the startup.",
+                "Ensure both agents work together to provide complete, accurate, and actionable information.",
+                "Focus on Indian market dynamics, opportunities, and challenges.",
+                "Maintain consistency between insights and chatbot responses.",
+                "Provide both high-level strategic analysis and detailed operational information as needed.",
+                "Remember: Your analysis directly impacts investment decisions in the Indian startup ecosystem."
             ],
             add_datetime_to_instructions=True,
-            add_member_tools_to_system_message=False,  # This can be tried to make the agent more consistently get the transfer tool call correct
-            enable_agentic_context=True,  # Allow the agent to maintain a shared context and send that to members.
-            share_member_interactions=True,  # Share all member responses with subsequent member requests.
+            add_member_tools_to_system_message=False,
+            enable_agentic_context=True,
+            share_member_interactions=True,
             show_members_responses=True,
-            markdown=True,
-
+            markdown=True
         )
 
-        
-    def _get_agent_instructions(self) -> str:
+        return startup_analysis_team
 
-        """Get comprehensive instructions for the AI agent"""
-        return """
-        You are MemoryPal, an advanced AI assistant with access to documents, web search, and conversation memory.
-        
-        CORE CAPABILITIES:
-        1. Document Processing: Analyze PDFs, text files, and other documents
-        2. Web Search: Access current information from the internet
-        3. Memory Management: Remember conversations and build knowledge relationships
-        4. Hybrid Retrieval: Combine document knowledge with web information
-        
-        RESPONSE GUIDELINES:
-        1. Always search for relevant information before answering complex questions
-        2. Clearly distinguish between document-based and web-based information
-        3. Provide source citations for all information
-        4. Synthesize information from multiple sources when available
-        5. Ask clarifying questions when the query is ambiguous
-        6. Be conversational but informative
-        
-        TOOL USAGE:
-        - Use embed_documents to process new documents
-        - Use hybrid_search for comprehensive information retrieval
-        - Use web_search for current events or when documents lack information
-        
-        MEMORY INTEGRATION:
-        - Remember key facts and relationships from conversations
-        - Build connections between different pieces of information
-        - Refer to previous conversations when relevant
-        
-        Always strive to provide accurate, helpful, and well-sourced responses.
-        """
     
     def chat(self, query: str, session_id: str = "default", use_web: bool = True) -> Dict[str, Any]:
         """Main chat interface"""
