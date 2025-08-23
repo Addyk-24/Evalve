@@ -200,17 +200,65 @@ class ConversationMemory:
         # Sort by relevance and return top results
         relevant_exchanges.sort(key=lambda x: x['relevance'], reverse=True)
         return relevant_exchanges[:max_results]
+    
 
+class MemoryGraph:
+    """Simple in-memory knowledge graph for relationships"""
+    
+    def __init__(self):
+        self.entities = {}
+        self.relationships = []
+    
+    def add_entity(self, entity_id: str, entity_type: str, properties: Dict):
+        """Add an entity to the knowledge graph"""
+        self.entities[entity_id] = {
+            "type": entity_type,
+            "properties": properties,
+            "created_at": datetime.now().isoformat()
+        }
+    
+    def add_relationship(self, source: str, target: str, relation_type: str, properties: Dict = None):
+        """Add a relationship between entities"""
+        self.relationships.append({
+            "source": source,
+            "target": target,
+            "type": relation_type,
+            "properties": properties or {},
+            "created_at": datetime.now().isoformat()
+        })
+    
+    def get_related_entities(self, entity_id: str) -> List[Dict]:
+        """Get entities related to a given entity"""
+        related = []
+        for rel in self.relationships:
+            if rel["source"] == entity_id:
+                if rel["target"] in self.entities:
+                    related.append({
+                        "entity": self.entities[rel["target"]],
+                        "relationship": rel["type"],
+                        "entity_id": rel["target"]
+                    })
+            elif rel["target"] == entity_id:
+                if rel["source"] in self.entities:
+                    related.append({
+                        "entity": self.entities[rel["source"]],
+                        "relationship": rel["type"],
+                        "entity_id": rel["source"]
+                    })
+        return related
 
 class EvalveAgent:
 
     """Main RAG agent that combines all components"""
     def __init__ (self):
+
+        # System Prompts
         self.insight_prompt = insight_system_prompt
         self.knowledge_prompt = knowledge_system_prompt
+
         # Initialize core components
         self.db_manager = DatabaseManager(SUPABASE_URL, SUPABASE_KEY)
-        # self.memory_graph = MemoryGraph()
+        self.memory_graph = MemoryGraph()
         self.conversation_memory = ConversationMemory(self.db_manager)
         
         # Initialize tools
@@ -258,7 +306,7 @@ class EvalveAgent:
         insights_generator, startup_chatbot = self.create_agents()
         
         # Create a coordinated team for comprehensive startup analysis
-        startup_analysis_team = Team(
+        self.startup_analysis_team = Team(
             name="StartupAnalysisTeam",
             mode="coordinate",
             model=OpenAIChat("gpt-4o"),
@@ -283,9 +331,6 @@ class EvalveAgent:
             show_members_responses=True,
             markdown=True
         )
-
-        return startup_analysis_team
-
     
     def chat(self, query: str, session_id: str = "default", use_web: bool = True) -> Dict[str, Any]:
         """Main chat interface"""
@@ -298,11 +343,8 @@ class EvalveAgent:
             enhanced_query = self._enhance_query_with_context(query, conversation_context, relevant_history)
             
             # Get response from agent
-            response = self.agent.run(enhanced_query)
-            
-            # Clean and format response
-            clean_response = self.formatter.clean_response(str(response.content))
-            
+            response = self.startup_analysis_team.run(enhanced_query)
+                        
             # Extract context used
             context_used = ""
             if hasattr(response, 'tool_calls') and response.tool_calls:
@@ -311,13 +353,13 @@ class EvalveAgent:
                         context_used += str(tool_call.result) + "\n"
             
             # Save conversation
-            self.conversation_memory.add_exchange(query, clean_response, context_used, session_id)
+            self.conversation_memory.add_exchange(query, response, context_used, session_id)
             
             # Update memory graph
-            self._update_memory_graph(query, clean_response)
+            self._update_memory_graph(query, response)
             
             return {
-                "response": clean_response,
+                "response": response,
                 "context": self.formatter.format_context(context_used),
                 "session_id": session_id,
                 "timestamp": datetime.now().isoformat(),
@@ -333,6 +375,59 @@ class EvalveAgent:
                 "timestamp": datetime.now().isoformat(),
                 "sources_used": []
             }
+
+    def _enhance_query_with_context(self, query: str, conversation_context: str, relevant_history: List[Dict]) -> str:
+        """Enhance query with conversation context"""
+        enhanced_parts = [query]
+        
+        if conversation_context:
+            enhanced_parts.append(f"\nRecent conversation context:\n{conversation_context}")
+        
+        if relevant_history:
+            history_context = "\nRelevant previous discussions:\n"
+            for item in relevant_history:
+                history_context += f"- {item['query'][:100]}...\n"
+            enhanced_parts.append(history_context)
+        
+        return "\n".join(enhanced_parts)
+    
+    def _update_memory_graph(self, query: str, response: str):
+        """Update memory graph with new information"""
+        try:
+            # Extract entities and relationships (simplified)
+            query_id = f"query_{datetime.now().timestamp()}"
+            
+            self.memory_graph.add_entity(
+                query_id,
+                "conversation",
+                {
+                    "query": query,
+                    "response": response[:200],  # Truncate for storage
+                    "timestamp": datetime.now().isoformat()
+                }
+            )
+            
+        except Exception as e:
+            print(f"Error updating memory graph: {e}")
+
+    
+    def get_conversation_history(self, session_id: str, limit: int = 10) -> List[Dict]:
+        """Get conversation history"""
+        return self.db_manager.get_conversation_history(session_id, limit)
+    
+    def get_system_status(self) -> Dict[str, Any]:
+        """Get system status information"""
+        return {
+            "database_connected": self.db_manager.is_connected(),
+            "vector_db_available": self.document_embedder.vector_db is not None,
+            "web_search_available": self.web_search.serpapi_key is not None,
+            "documents_in_memory": len(self.document_embedder.document_store.documents),
+            "entities_in_graph": len(self.memory_graph.entities),
+            "relationships_in_graph": len(self.memory_graph.relationships),
+            "conversation_history_length": len(self.conversation_memory.history)
+        }
+    
+
 
  
 
