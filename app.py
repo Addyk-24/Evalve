@@ -5,6 +5,7 @@ load_dotenv()
 from agno.agent import Agent, AgentKnowledge
 from agno.models.openai import OpenAIChat
 from agno.team.team import Team
+from agno.tools.serpapi import SerpApiTools
 
 from Evalve.system_prompt.prompt import system_prompt
 
@@ -17,10 +18,10 @@ from agno.document.chunking.document import DocumentChunking
 from agno.tools import Toolkit
 from supabase import create_client
 
+from typing import Optional
 
 
 import os
-import fitz
 import json
 import re
 import requests
@@ -28,19 +29,21 @@ import urllib.parse
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from pathlib import Path
-import numpy as np
-from bs4 import BeautifulSoup
+
 
 # SYSTEM PROMPTS
 insight_system_prompt = system_prompt.startup_insight
 knowledge_system_prompt = system_prompt.Startup_Knowledge
+
+# WEB SCRAPPING TOOL
+web_scrapping = SerpApiTools()
 
 SUPABASE_DB_PASSWORD = os.environ.get("SUPABASE_DB_PASSWORD")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 SERPAPI_KEY = os.environ.get("SERPAPI_KEY") 
 
-SUPABASE_URL = "https://wasxdjhtnmxyatwbwttj.supabase.co"
+SUPABASE_URL = "https://gcyjrqgljtizcgekbsgf.supabase.co"
 
 class DatabaseManager:
     """Manages database operations for storing conversations and knowledge"""
@@ -137,6 +140,7 @@ class DatabaseManager:
         except Exception as e:
             print(f"Error retrieving documents: {str(e)}")
             return []
+    def save_startup_profile(): pass
 
 class ConversationMemory:
     """Manages conversation history and context"""
@@ -247,6 +251,7 @@ class MemoryGraph:
                     })
         return related
 
+
 class EvalveAgent:
 
     """Main RAG agent that combines all components"""
@@ -262,13 +267,12 @@ class EvalveAgent:
         self.conversation_memory = ConversationMemory(self.db_manager)
         
         # Initialize tools
-        # self.web_search = WebSearchTool()
-        # self.document_embedder = DocumentEmbedder(self.memory_graph, self.db_manager)
-        # self.hybrid_retriever = HybridRetriever(self.memory_graph, self.document_embedder, self.web_search)
-        
+
         # Initialize AI agent
+        self.create_startup_analysis_team()
+
     def create_agents(self):
-        # Startup Insights Generator Agent
+
         insights_generator = Agent(
             name="StartupInsightsAnalyst",
             role="Senior Investment Analyst for Indian Startups",
@@ -278,13 +282,13 @@ class EvalveAgent:
                 "investors make informed investment decisions in the Indian market."
             ),
             instructions=[self.insights_prompt],
-            tools=[],  # Add tools like web_search, document_analyzer, data_visualizer
+            tools=[],  
             add_datetime_to_instructions=True,
             show_tool_calls=True,
             markdown=True
         )
 
-        # Startup Knowledge Chatbot Agent  
+
         startup_chatbot = Agent(
             name="StartupConsultantChatbot",
             role="Expert Startup Consultant for Interactive Queries",
@@ -294,7 +298,7 @@ class EvalveAgent:
                 "understand specific startups through conversational queries."
             ),
             instructions=[self.knowledge_prompt],
-            tools=[],  # Add tools like web_search, knowledge_base, document_retriever
+            tools=[SerpApiTools(search_youtube = True)],
             add_datetime_to_instructions=True,
             show_tool_calls=False,
             markdown=True
@@ -305,7 +309,7 @@ class EvalveAgent:
     def create_startup_analysis_team(self):
         insights_generator, startup_chatbot = self.create_agents()
         
-        # Create a coordinated team for comprehensive startup analysis
+
         self.startup_analysis_team = Team(
             name="StartupAnalysisTeam",
             mode="coordinate",
@@ -332,6 +336,7 @@ class EvalveAgent:
             markdown=True
         )
     
+  
     def chat(self, query: str, session_id: str = "default", use_web: bool = True) -> Dict[str, Any]:
         """Main chat interface"""
         try:
@@ -344,6 +349,9 @@ class EvalveAgent:
             
             # Get response from agent
             response = self.startup_analysis_team.run(enhanced_query)
+            
+            # Extract string content from response
+            response_content = str(response.content) if hasattr(response, 'content') else str(response)
                         
             # Extract context used
             context_used = ""
@@ -353,17 +361,16 @@ class EvalveAgent:
                         context_used += str(tool_call.result) + "\n"
             
             # Save conversation
-            self.conversation_memory.add_exchange(query, response, context_used, session_id)
+            self.conversation_memory.add_exchange(query, response_content, context_used, session_id)
             
             # Update memory graph
-            self._update_memory_graph(query, response)
+            self._update_memory_graph(query, response_content)
             
             return {
-                "response": response,
-                "context": self.formatter.format_context(context_used),
+                "response": response_content,
+                "context": context_used,
                 "session_id": session_id,
                 "timestamp": datetime.now().isoformat(),
-                "sources_used": self._extract_sources(context_used)
             }
             
         except Exception as e:
@@ -410,7 +417,6 @@ class EvalveAgent:
         except Exception as e:
             print(f"Error updating memory graph: {e}")
 
-    
     def get_conversation_history(self, session_id: str, limit: int = 10) -> List[Dict]:
         """Get conversation history"""
         return self.db_manager.get_conversation_history(session_id, limit)
@@ -419,13 +425,14 @@ class EvalveAgent:
         """Get system status information"""
         return {
             "database_connected": self.db_manager.is_connected(),
-            "vector_db_available": self.document_embedder.vector_db is not None,
-            "web_search_available": self.web_search.serpapi_key is not None,
-            "documents_in_memory": len(self.document_embedder.document_store.documents),
             "entities_in_graph": len(self.memory_graph.entities),
             "relationships_in_graph": len(self.memory_graph.relationships),
             "conversation_history_length": len(self.conversation_memory.history)
         }
+    
+
+
+ 
     
 
 
