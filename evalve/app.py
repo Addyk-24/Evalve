@@ -7,7 +7,7 @@ from agno.models.openai import OpenAIChat
 from agno.team.team import Team
 from agno.tools.serpapi import SerpApiTools
 
-from Evalve.system_prompt.prompt import system_prompt
+from system_prompt.prompt import system_prompt
 
 from agno.knowledge.pdf import PDFKnowledgeBase, PDFReader
 from agno.knowledge.website import WebsiteKnowledgeBase
