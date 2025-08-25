@@ -1,6 +1,11 @@
 from dotenv import load_dotenv
 load_dotenv()
+import sys
 import os
+
+
+
+from memory.memory import MemoryGraph
 
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime, date
@@ -13,6 +18,7 @@ SUPABASE_DB_PASSWORD = os.environ.get("SUPABASE_DB_PASSWORD")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 SUPABASE_URL = os.environ.get("SUPABASE_URL") 
 
+memory_graph = MemoryGraph()
 # Data Classes
 
 @dataclass
@@ -51,9 +57,10 @@ class ConversationRecord:
 class DatabaseManager:
     """Enhanced database manager for startup platform with AI agent integration"""
     
-    def __init__(self, SUPABASE_URL: str, SUPABASE_KEY: str):
+    def __init__(self, SUPABASE_URL: str, SUPABASE_KEY: str,):
         self.supabase_url = SUPABASE_URL
         self.supabase_key = SUPABASE_KEY
+        self.memory_graph = memory_graph
         self.supabase = None
         self.connected = False
         self._init_connection()
@@ -510,6 +517,118 @@ class DatabaseManager:
         except Exception as e:
             print(f"❌ Error searching startups: {str(e)}")
             return []
+        
+    # Integration example - Add these methods to your DatabaseManager class
+
+    def initialize_memory_graph(self):
+        """Initialize and populate the memory graph"""
+        
+        if not self.is_connected():
+            print("❌ Database not connected. Cannot initialize memory graph.")
+            return None
+        
+        # Build the graph from existing data
+        memory_graph.build_startup_graph_from_db(self)
+        return memory_graph
+
+    def get_enhanced_chatbot_context(self, startup_id: str, query: str) -> Dict[str, Any]:
+        """Get enhanced context using both database and memory graph"""
+        
+        # Get basic startup data from database
+        startup_data = self.get_startup_for_insights(startup_id)
+        if not startup_data:
+            return {}
+        
+        # Get conversation history
+        conversation_history = self.get_startup_conversation_context(startup_id, limit=5)
+        
+        # Get graph-based context
+        graph_context = memory_graph.get_chatbot_context(startup_id, query)
+        
+        # Combine all contexts
+        enhanced_context = {
+            "startup_data": startup_data,
+            "conversation_history": conversation_history,
+            "graph_relationships": graph_context,
+            "similar_startups": memory_graph.find_similar_startups(startup_id),
+            "query_focus": graph_context.get("focus", "general")
+        }
+        
+        return enhanced_context
+
+    def save_startup_with_graph_update(self, startup_data: Dict[str, Any]) -> Optional[str]:
+        """Save startup and update memory graph"""
+        
+        # Save to database first
+        startup_id = self.save_startup_profile(startup_data)
+        
+        if startup_id:
+            # Add to memory graph
+            memory_graph.add_entity(
+                entity_id=startup_id,
+                entity_type="startup",
+                properties=startup_data
+            )
+            
+            # Add relationships
+            if startup_data.get('industry_sector'):
+                industry_id = f"industry_{startup_data['industry_sector'].replace(' ', '_').lower()}"
+                memory_graph.add_entity(
+                    entity_id=industry_id,
+                    entity_type="industry",
+                    properties={"name": startup_data['industry_sector']}
+                )
+                memory_graph.add_relationship(startup_id, industry_id, "operates_in")
+            
+            # Add founder relationships
+            if startup_data.get('founders'):
+                for founder in startup_data['founders']:
+                    founder_id = f"founder_{founder.get('name', '').replace(' ', '_').lower()}"
+                    memory_graph.add_entity(
+                        entity_id=founder_id,
+                        entity_type="founder",
+                        properties=founder
+                    )
+                    memory_graph.add_relationship(startup_id, founder_id, "founded_by")
+        
+        return startup_id
+
+    # Usage example in your agent/chatbot
+    def get_intelligent_response(startup_id: str, user_query: str) -> str:
+        """Example of how to use enhanced context in your chatbot"""
+        
+        # Get enhanced context
+        context = db_manager.get_enhanced_chatbot_context(startup_id, user_query)
+        
+        # Build context string for your AI agent
+        context_string = f"""
+        Startup Information:
+        - Company: {context['startup_data'].get('company_name')}
+        - Industry: {context['startup_data'].get('industry_sector')}
+        - Stage: {context['startup_data'].get('stage')}
+        
+        Query Focus: {context.get('query_focus', 'general')}
+        
+        Related Information:
+        """
+        
+        if context['query_focus'] == 'competitors':
+            competitors = context['graph_relationships'].get('competitors', [])
+            if competitors:
+                context_string += f"Competitors: {[comp['entity']['properties'].get('company_name') for comp in competitors[:3]]}\n"
+        
+        elif context['query_focus'] == 'similar_startups':
+            similar = context.get('similar_startups', [])
+            if similar:
+                context_string += f"Similar Startups: {[s['startup']['properties'].get('company_name') for s in similar[:3]]}\n"
+        
+        # Add conversation history
+        if context.get('conversation_history'):
+            context_string += "\nRecent Conversation:\n"
+            for conv in context['conversation_history'][:2]:
+                context_string += f"Q: {conv['query'][:100]}...\nA: {conv['response'][:100]}...\n"
+        
+        return context_string  # Feed this to your AI agent
 
 # Create global database instance
 try:
