@@ -8,6 +8,8 @@ from agno.team.team import Team
 from agno.tools.serpapi import SerpApiTools
 
 from system_prompt.prompt import system_prompt
+from database.DatabaseManager import DatabaseManager
+from conversation_mem.convo_mem import ConversationMemory
 
 from agno.knowledge.pdf import PDFKnowledgeBase, PDFReader
 from agno.knowledge.website import WebsiteKnowledgeBase
@@ -18,22 +20,23 @@ from agno.document.chunking.document import DocumentChunking
 from agno.tools import Toolkit
 from supabase import create_client
 
-from typing import Optional
-
+from typing import List, Dict, Any, Optional
 
 import os
 import json
 import re
 import requests
 import urllib.parse
-from typing import List, Dict, Any, Optional
 from datetime import datetime
 from pathlib import Path
+
+
 
 
 # SYSTEM PROMPTS
 insight_system_prompt = system_prompt.startup_insight
 knowledge_system_prompt = system_prompt.Startup_Knowledge
+
 
 # WEB SCRAPPING TOOL
 web_scrapping = SerpApiTools()
@@ -45,165 +48,6 @@ SERPAPI_KEY = os.environ.get("SERPAPI_KEY")
 
 SUPABASE_URL = "https://gcyjrqgljtizcgekbsgf.supabase.co"
 
-class DatabaseManager:
-    """Manages database operations for storing conversations and knowledge"""
-    
-    def __init__(self, SUPABASE_URL: str, SUPABASE_KEY: str):
-        self.supabase_url = SUPABASE_URL
-        self.supabase_key = SUPABASE_KEY
-        self.supabase = None
-        self.connected = False
-        self._init_connection()
-    
-    def _init_connection(self):
-        """Initialize Supabase connection with error handling"""
-        try:
-            self.supabase = create_client(self.supabase_url, self.supabase_key)
-            self.supabase.table('conversations').select('id').limit(1).execute()
-            self.connected = True
-            print("✅ Database connection successful")
-        except Exception as e:
-            print(f"❌ Database connection failed: {str(e)}")
-            self.connected = False
-            self.supabase = None
-    
-    def is_connected(self) -> bool:
-        """Check if database is connected"""
-        return self.connected and self.supabase is not None
-    
-    def save_conversation(self, session_id: str, query: str, response: str, context: str = None):
-        """Save conversation to database"""
-        if not self.is_connected():
-            return None
-            
-        try:
-            conversation_data = {
-                'session_id': session_id,
-                'query': query,
-                'response': response,
-                'context': context,
-                'timestamp': datetime.now().isoformat()
-            }
-            # TABLE 1 : conversation 
-            result = self.supabase.table('conversations').insert(conversation_data).execute()
-            return result.data[0]['id'] if result.data else None
-        except Exception as e:
-            print(f"Error saving conversation: {str(e)}")
-            return None
-    
-    def get_conversation_history(self, session_id: str, limit: int = 10):
-        """Retrieve conversation history from database"""
-        if not self.is_connected():
-            return []
-            
-        try:
-            result = self.supabase.table('conversations')\
-                .select('*')\
-                .eq('session_id', session_id)\
-                .order('timestamp', desc=True)\
-                .limit(limit)\
-                .execute()
-            return result.data
-        except Exception as e:
-            print(f"Error retrieving conversation history: {str(e)}")
-            return []
-    
-    def save_document_metadata(self, filepath: str, document_type: str, chunk_count: int):
-        """Save document metadata to database"""
-        if not self.is_connected():
-            return None
-            
-        try:
-            doc_data = {
-                'filepath': filepath,
-                'document_type': document_type,
-                'chunk_count': chunk_count,
-                'processed_at': datetime.now().isoformat()
-            }
-            result = self.supabase.table('document_metadata').insert(doc_data).execute()
-            return result.data[0]['id'] if result.data else None
-        except Exception as e:
-            print(f"Error saving document metadata: {str(e)}")
-            return None
-    
-    def get_processed_documents(self):
-        """Get list of processed documents"""
-        if not self.is_connected():
-            return []
-            
-        try:
-            result = self.supabase.table('document_metadata')\
-                .select('*')\
-                .order('processed_at', desc=True)\
-                .execute()
-            return result.data
-        except Exception as e:
-            print(f"Error retrieving documents: {str(e)}")
-            return []
-    def save_startup_profile(): pass
-
-class ConversationMemory:
-    """Manages conversation history and context"""
-    
-    def __init__(self, db_manager: DatabaseManager = None):
-        self.history = []
-        self.context_window = 10
-        self.db_manager = db_manager
-    
-    def add_exchange(self, query: str, response: str, context: str = None, session_id: str = None):
-        """Add a conversation exchange"""
-        exchange = {
-            "timestamp": datetime.now().isoformat(),
-            "query": query,
-            "response": response,
-            "context": context
-        }
-        self.history.append(exchange)
-        
-        if len(self.history) > self.context_window:
-            self.history = self.history[-self.context_window:]
-        
-        # Save to database if manager is available
-        if self.db_manager and self.db_manager.is_connected() and session_id:
-            self.db_manager.save_conversation(session_id, query, response, context)
-    
-    def get_context_string(self, max_exchanges: int = 5) -> str:
-        """Get formatted conversation history for context"""
-        if not self.history:
-            return ""
-        
-        recent_history = self.history[-max_exchanges:]
-        context_parts = []
-        
-        for exchange in recent_history:
-            context_parts.append(f"Human: {exchange['query']}")
-            context_parts.append(f"Assistant: {exchange['response'][:200]}...")
-        
-        return "\n".join(context_parts)
-    
-    def get_relevant_history(self, current_query: str, max_results: int = 3) -> List[Dict]:
-        """Get conversation history relevant to current query"""
-        if not self.history:
-            return []
-        
-        # Simple keyword matching for relevance
-        query_words = set(current_query.lower().split())
-        relevant_exchanges = []
-        
-        for exchange in self.history:
-            exchange_words = set((exchange['query'] + ' ' + exchange['response']).lower().split())
-            common_words = query_words.intersection(exchange_words)
-            
-            if common_words:
-                relevance = len(common_words) / len(query_words)
-                relevant_exchanges.append({
-                    **exchange,
-                    'relevance': relevance
-                })
-        
-        # Sort by relevance and return top results
-        relevant_exchanges.sort(key=lambda x: x['relevance'], reverse=True)
-        return relevant_exchanges[:max_results]
     
 
 class MemoryGraph:
@@ -430,13 +274,6 @@ class EvalveAgent:
             "conversation_history_length": len(self.conversation_memory.history)
         }
     
-
-
- 
-    
-
-
- 
 
 
 # editor.print_response("Write an article about latest developments in AI.")
