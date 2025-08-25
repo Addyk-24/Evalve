@@ -232,6 +232,3 @@ class EvalveAgent:
             "conversation_history_length": len(self.conversation_memory.history)
         }
     
-
-
-# editor.print_response("Write an article about latest developments in AI.")
