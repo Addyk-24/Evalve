@@ -21,7 +21,7 @@ class ConversationMemory:
     
     def __init__(self, db_manager: DatabaseManager = None, session_id: str = None):
         self.history = []
-        self.context_window = 15  # Increased for better context
+        self.context_window = 15 
         self.db_manager = db_manager
         self.session_id = session_id or self._generate_session_id()
         self.current_startup_id = None
@@ -51,7 +51,7 @@ class ConversationMemory:
         """Add a conversation exchange with enhanced metadata"""
         
         if not query.strip() or not response.strip():
-            print("⚠️ Empty query or response, skipping...")
+            print("Empty query or response, skipping...")
             return False
         
         try:
@@ -90,9 +90,9 @@ class ConversationMemory:
                 
                 success = self.db_manager.save_conversation_with_context(conversation_record)
                 if success:
-                    print(f"💾 Conversation saved to database")
+                    print(f"Conversation saved to database")
                 else:
-                    print("⚠️ Failed to save conversation to database")
+                    print("Failed to save conversation to database")
             
             return True
             

@@ -4,7 +4,8 @@ __pycache__/
 *$py.class
 
 error.py
-
+new.py
+arch.txt
 # C extensions
 *.so
 
