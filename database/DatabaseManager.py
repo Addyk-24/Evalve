@@ -370,46 +370,22 @@ class DatabaseManager:
             print(f"Error getting similar startups: {str(e)}")
             return []
     
-    # =================== ENHANCED SEARCH & RETRIEVAL ===================
+    # =================== SEARCH & RETRIEVAL =====================
     
-    def get_startup_profile(self, startup_id: str) -> Optional[Dict[str, Any]]:
-        """Get complete startup profile by ID with error handling"""
-        if not self.is_connected():
-            return None
-            
+    def get_startup_profile(self, startup_id: str):
+        """Get startup data by startup_id (original method)"""
         try:
-            # Get main profile
-            result = self.supabase.table('startup_profiles')\
-                .select('*')\
-                .eq('startup_id', startup_id)\
-                .execute()
+            response = self.supabase.table('startup_profiles').select('*').eq('startup_id', startup_id).execute()
             
-            if not result.data:
-                print(f"❌ No startup found with ID: {startup_id}")
+            if response.data and len(response.data) > 0:
+                return response.data[0]
+            else:
                 return None
-            
-            startup_profile = result.data[0]
-            
-            # Get founders
-            founders_result = self.supabase.table('founders')\
-                .select('*')\
-                .eq('startup_id', startup_id)\
-                .execute()
-            startup_profile['founders'] = founders_result.data or []
-            
-            # Get team members
-            team_result = self.supabase.table('team_members')\
-                .select('*')\
-                .eq('startup_id', startup_id)\
-                .execute()
-            startup_profile['team_members'] = team_result.data or []
-            
-            return startup_profile
-            
+                
         except Exception as e:
-            print(f"❌ Error retrieving startup profile: {str(e)}")
+            print(f"Error getting startup by ID: {e}")
             return None
-    
+        
     def save_founders(self, startup_id: str, founders: List[Dict[str, Any]]):
         """Save founder information with validation"""
         if not self.is_connected():
@@ -629,8 +605,61 @@ class DatabaseManager:
                 context_string += f"Q: {conv['query'][:100]}...\nA: {conv['response'][:100]}...\n"
         
         return context_string  # Feed this to your AI agent
+    
+    def get_startup_by_company_name(self, company_name: str):
+        """Get startup data by company name (case-insensitive search)"""
+        try:
+            # Using ilike for case-insensitive search
+            response = self.supabase.table('startup_profiles').select('*').ilike('company_name', f'%{company_name}%').execute()
+            
+            if response.data and len(response.data) > 0:
+                # If multiple matches, return the first one
+                # You might want to add logic to handle multiple matches differently
+                return response.data[0]
+            else:
+                return None
+                
+        except Exception as e:
+            print(f"Error searching by company name: {e}")
+            return None
 
-# Create global database instance
+    def get_startup_by_name_or_id(self, identifier: str):
+            """Get startup data by either company name or startup_id"""
+            try:
+                print(f"Searching for startup with identifier: {identifier}")
+                
+                # First, try to get by startup_id
+                startup_data = self.get_startup_profile(identifier)
+                if startup_data:
+                    print(f"Found startup by ID: {startup_data.get('company_name')}")
+                    return startup_data
+                
+                # If not found by ID, try searching by company name
+                startup_data = self.get_startup_by_company_name(identifier)
+                if startup_data:
+                    print(f"Found startup by name: {startup_data.get('company_name')}")
+                    return startup_data
+                
+                print(f"No startup found with identifier: {identifier}")
+                return None
+                
+            except Exception as e:
+                print(f"Error in get_startup_by_name_or_id: {e}")
+                return None
+        
+    def search_startups_by_name(self, company_name: str, limit: int = 5):
+        """Search for multiple startups by company name (returns list of matches)"""
+        try:
+            response = self.supabase.table('startup_profiles').select('*').ilike('company_name', f'%{company_name}%').limit(limit).execute()
+            
+            return response.data if response.data else []
+                
+        except Exception as e:
+            print(f"Error searching startups by name: {e}")
+            return []
+    
+
+# Creating global instance
 try:
     db_manager = DatabaseManager(SUPABASE_URL, SUPABASE_KEY)
 except Exception as e:

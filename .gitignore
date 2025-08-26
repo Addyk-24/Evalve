@@ -5,6 +5,7 @@ __pycache__/
 
 error.py
 new.py
+demo-app.py
 arch.txt
 query.sql
 # C extensions
