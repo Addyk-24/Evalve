@@ -108,25 +108,52 @@ class EvalveAgent:
             show_tool_calls=False,
             markdown=True
         )
+    def create_startup_analysis_team(self):
+        insights_generator, startup_chatbot = self.create_agents()
+        
 
-
-    
+        self.startup_analysis_team = Team(
+            name="StartupAnalysisTeam",
+            mode="coordinate",
+            model=llm,
+            members=[insights_generator, startup_chatbot],
+            description=(
+                "You are a senior startup analysis team specializing in Indian startup evaluation. "
+                "Your goal is to provide comprehensive startup analysis and interactive investor support."
+            ),
+            instructions=[
+                "First, have the StartupInsightsAnalyst generate comprehensive investment insights for the startup.",
+                "Then, be ready to have the StartupConsultantChatbot answer any specific investor questions about the startup.",
+                "Ensure both agents work together to provide complete, accurate, and actionable information.",
+                "Focus on Indian market dynamics, opportunities, and challenges.",
+                "Maintain consistency between insights and chatbot responses.",
+                "Provide both high-level strategic analysis and detailed operational information as needed.",
+                "Remember: Your analysis directly impacts investment decisions in the Indian startup ecosystem."
+            ],
+            add_datetime_to_instructions=True,
+            add_member_tools_to_system_message=False,
+            enable_agentic_context=True,
+            share_member_interactions=True,
+            show_members_responses=True,
+            markdown=True
+        )
   
-    def chat(self, query: str, session_id: str = "default", use_web: bool = True) -> Dict[str, Any]:
-        """Main chat interface"""
+
+            
+    # Get response from agent
+    def get_startup_insight(self,startup_id:str, session_id: str = "default", use_web: bool = False):
+        """Retrieve Specific Startup Insights"""
         try:
-            insights_generator, startup_chatbot = self.create_agents()
+            # insights_generator,startup_chatbot = self.create_agents()
             # Get conversation context
             conversation_context = self.conversation_memory.get_context_string()
             relevant_history = self.conversation_memory.get_relevant_history(query)
             
             # Enhance query with context
             enhanced_query = self._enhance_query_with_context(query, conversation_context, relevant_history)
-            
-            # Get response from agent
-            
-            response = self.startup_analysis_team.run(enhanced_query)
-            
+
+            query = "Generator investment insights and insights about startup {startup_id}  "
+            response = self.startup_analysis_team.run(query)
             # Extract string content from response
             response_content = str(response.content) if hasattr(response, 'content') else str(response)
                         
@@ -159,6 +186,58 @@ class EvalveAgent:
                 "timestamp": datetime.now().isoformat(),
                 "sources_used": []
             }
+
+def get_startup_chatbot(self,startup_id:str, session_id: str = "default", use_web: bool = True,query:str):
+    """Getting Chatbot for Specific Startup"""
+    try:
+        # insights_generator,startup_chatbot = self.create_agents()
+        # Get conversation context
+        conversation_context = self.conversation_memory.get_context_string()
+        relevant_history = self.conversation_memory.get_relevant_history(query)
+        
+        # Enhance query with context
+        enhanced_query = self._enhance_query_with_context(query, conversation_context, relevant_history)
+    
+        query_context = "You are answering questions related to specific startup {startup_id} and user question:{query}"
+        response = self.startup_analysis_team.run(query_context)
+
+        # Extract string content from response
+        response_content = str(response.content) if hasattr(response, 'content') else str(response)
+            
+        # Extract context used
+        context_used = ""
+        if hasattr(response, 'tool_calls') and response.tool_calls:
+            for tool_call in response.tool_calls:
+                if hasattr(tool_call, 'result'):
+                    context_used += str(tool_call.result) + "\n"
+        
+        # Save conversation
+        self.conversation_memory.add_exchange(query, response_content, context_used, session_id)
+        
+        # Update memory graph
+        self._update_memory_graph(query, response_content)
+        
+        return {
+            "response": response_content,
+            "context": context_used,
+            "session_id": session_id,
+            "timestamp": datetime.now().isoformat(),
+        }
+        
+    except Exception as e:
+        error_msg = f"Error processing query: {str(e)}"
+        return {
+            "response": error_msg,
+            "context": "",
+            "session_id": session_id,
+            "timestamp": datetime.now().isoformat(),
+            "sources_used": []
+        }
+
+        
+        # response = self.startup_analysis_team.run(enhanced_query)
+            
+
 
     def _enhance_query_with_context(self, query: str, conversation_context: str, relevant_history: List[Dict]) -> str:
         """Enhance query with conversation context"""
