@@ -226,7 +226,7 @@ class EvalveAgent:
         """Retrieve Specific Startup Insights by company name or startup ID"""
         try:
             # Define query first
-            query = f"Generate investment insights and analysis about startup/company: {company_identifier}"
+            query = f"Generate investment insights and analysis about startup/company: {company_identifier} and restrictly be 100% sure then only state that statement"
             
             # Get startup data from database (by name or ID)
             startup_data = self.get_startup_by_name_or_id(company_identifier)

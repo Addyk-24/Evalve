@@ -371,7 +371,7 @@ class DatabaseManager:
             return []
     
     # =================== SEARCH & RETRIEVAL =====================
-    
+
     def get_startup_profile(self, startup_id: str):
         """Get startup data by startup_id (original method)"""
         try:
@@ -439,7 +439,7 @@ class DatabaseManager:
         except Exception as e:
             print(f"❌ Error saving team members: {str(e)}")
     
-    # =================== EXISTING METHODS (Enhanced) ===================
+    # =================== EXISTING METHODS ===================
     
     def get_all_startups(self, filters: Dict[str, Any] = None, limit: int = 50) -> List[Dict[str, Any]]:
         """Get all startup profiles with optional filters - enhanced for AI agents"""
