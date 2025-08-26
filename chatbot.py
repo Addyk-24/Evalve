@@ -68,7 +68,8 @@ if "session_id" not in st.session_state:
 if "agent" not in st.session_state and AGENT_AVAILABLE:
     with st.spinner("Initializing AI Agent..."):
         try:
-            st.session_state.agent = EvalveAgent()
+            st.session_state.agent = EvalveAgent().get_startup_insight
+            # st.session_state.agent = EvalveAgent().get_startup_chatbot
             st.success("✅ AI Agent initialized successfully!")
         except Exception as e:
             st.error(f"❌ Failed to initialize agent: {str(e)}")

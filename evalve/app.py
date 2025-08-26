@@ -187,58 +187,53 @@ class EvalveAgent:
                 "sources_used": []
             }
 
-def get_startup_chatbot(self,startup_id:str, session_id: str = "default", use_web: bool = True,query:str):
-    """Getting Chatbot for Specific Startup"""
-    try:
-        # insights_generator,startup_chatbot = self.create_agents()
-        # Get conversation context
-        conversation_context = self.conversation_memory.get_context_string()
-        relevant_history = self.conversation_memory.get_relevant_history(query)
-        
-        # Enhance query with context
-        enhanced_query = self._enhance_query_with_context(query, conversation_context, relevant_history)
-    
-        query_context = "You are answering questions related to specific startup {startup_id} and user question:{query}"
-        response = self.startup_analysis_team.run(query_context)
-
-        # Extract string content from response
-        response_content = str(response.content) if hasattr(response, 'content') else str(response)
+    def get_startup_chatbot(self,query:str,startup_id:str, session_id: str = "default", use_web: bool = True):
+        """Getting Chatbot for Specific Startup"""
+        try:
+            # insights_generator,startup_chatbot = self.create_agents()
+            # Get conversation context
+            conversation_context = self.conversation_memory.get_context_string()
+            relevant_history = self.conversation_memory.get_relevant_history(query)
             
-        # Extract context used
-        context_used = ""
-        if hasattr(response, 'tool_calls') and response.tool_calls:
-            for tool_call in response.tool_calls:
-                if hasattr(tool_call, 'result'):
-                    context_used += str(tool_call.result) + "\n"
+            # Enhance query with context
+            enhanced_query = self._enhance_query_with_context(query, conversation_context, relevant_history)
         
-        # Save conversation
-        self.conversation_memory.add_exchange(query, response_content, context_used, session_id)
-        
-        # Update memory graph
-        self._update_memory_graph(query, response_content)
-        
-        return {
-            "response": response_content,
-            "context": context_used,
-            "session_id": session_id,
-            "timestamp": datetime.now().isoformat(),
-        }
-        
-    except Exception as e:
-        error_msg = f"Error processing query: {str(e)}"
-        return {
-            "response": error_msg,
-            "context": "",
-            "session_id": session_id,
-            "timestamp": datetime.now().isoformat(),
-            "sources_used": []
-        }
+            query_context = "You are answering questions related to specific startup {startup_id} and user question:{query}"
+            response = self.startup_analysis_team.run(query_context)
 
-        
-        # response = self.startup_analysis_team.run(enhanced_query)
+            # Extract string content from response
+            response_content = str(response.content) if hasattr(response, 'content') else str(response)
+                
+            # Extract context used
+            context_used = ""
+            if hasattr(response, 'tool_calls') and response.tool_calls:
+                for tool_call in response.tool_calls:
+                    if hasattr(tool_call, 'result'):
+                        context_used += str(tool_call.result) + "\n"
             
-
-
+            # Save conversation
+            self.conversation_memory.add_exchange(query, response_content, context_used, session_id)
+            
+            # Update memory graph
+            self._update_memory_graph(query, response_content)
+            
+            return {
+                "response": response_content,
+                "context": context_used,
+                "session_id": session_id,
+                "timestamp": datetime.now().isoformat(),
+            }
+            
+        except Exception as e:
+            error_msg = f"Error processing query: {str(e)}"
+            return {
+                "response": error_msg,
+                "context": "",
+                "session_id": session_id,
+                "timestamp": datetime.now().isoformat(),
+                "sources_used": []
+            }
+                    
     def _enhance_query_with_context(self, query: str, conversation_context: str, relevant_history: List[Dict]) -> str:
         """Enhance query with conversation context"""
         enhanced_parts = [query]
@@ -286,14 +281,5 @@ def get_startup_chatbot(self,startup_id:str, session_id: str = "default", use_we
             "conversation_history_length": len(self.conversation_memory.history)
         }
     
-
-# import streamlit as st
-
-# st.title("Evalve - Connect with VCs")
-# st.write("Welcome To Evalve - Evovle and Evaluate Your Startup")
-
-# prompt = st.chat_input("Say something")
-
-# st.button("Search")
 
 
