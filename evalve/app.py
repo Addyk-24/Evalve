@@ -109,42 +109,13 @@ class EvalveAgent:
             markdown=True
         )
 
-        return insights_generator, startup_chatbot
 
-    def create_startup_analysis_team(self):
-        insights_generator, startup_chatbot = self.create_agents()
-        
-
-        self.startup_analysis_team = Team(
-            name="StartupAnalysisTeam",
-            mode="coordinate",
-            model=llm,
-            members=[insights_generator, startup_chatbot],
-            description=(
-                "You are a senior startup analysis team specializing in Indian startup evaluation. "
-                "Your goal is to provide comprehensive startup analysis and interactive investor support."
-            ),
-            instructions=[
-                "First, have the StartupInsightsAnalyst generate comprehensive investment insights for the startup.",
-                "Then, be ready to have the StartupConsultantChatbot answer any specific investor questions about the startup.",
-                "Ensure both agents work together to provide complete, accurate, and actionable information.",
-                "Focus on Indian market dynamics, opportunities, and challenges.",
-                "Maintain consistency between insights and chatbot responses.",
-                "Provide both high-level strategic analysis and detailed operational information as needed.",
-                "Remember: Your analysis directly impacts investment decisions in the Indian startup ecosystem."
-            ],
-            add_datetime_to_instructions=True,
-            add_member_tools_to_system_message=False,
-            enable_agentic_context=True,
-            share_member_interactions=True,
-            show_members_responses=True,
-            markdown=True
-        )
     
   
     def chat(self, query: str, session_id: str = "default", use_web: bool = True) -> Dict[str, Any]:
         """Main chat interface"""
         try:
+            insights_generator, startup_chatbot = self.create_agents()
             # Get conversation context
             conversation_context = self.conversation_memory.get_context_string()
             relevant_history = self.conversation_memory.get_relevant_history(query)
@@ -153,6 +124,7 @@ class EvalveAgent:
             enhanced_query = self._enhance_query_with_context(query, conversation_context, relevant_history)
             
             # Get response from agent
+            
             response = self.startup_analysis_team.run(enhanced_query)
             
             # Extract string content from response
