@@ -52,7 +52,7 @@ class ConversationRecord:
     startup_id: str = None
     user_id: str = None
     context_used: str = ""
-    query_intent: str = ""
+    # query_intent: str = ""
 
 class DatabaseManager:
     """Enhanced database manager for startup platform with AI agent integration"""
@@ -313,7 +313,7 @@ class DatabaseManager:
                 'response': conversation_data.agent_response,
                 'context': conversation_data.context_used,
                 'agent_type': 'chatbot',
-                'query_intent': conversation_data.query_intent,
+                # 'query_intent': conversation_data.query_intent,
                 'user_id': conversation_data.user_id,
                 'timestamp': datetime.now().isoformat()
             }
