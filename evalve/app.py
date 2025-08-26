@@ -7,6 +7,10 @@ from agno.models.openai import OpenAIChat
 from agno.team.team import Team
 from agno.tools.serpapi import SerpApiTools
 
+# Trial
+from agno.models.groq import Groq
+
+
 from system_prompt.prompt import system_prompt
 from database.DatabaseManager import DatabaseManager
 from conversation_mem.convo_mem import ConversationMemory
@@ -46,13 +50,11 @@ SUPABASE_DB_PASSWORD = os.environ.get("SUPABASE_DB_PASSWORD")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 SERPAPI_KEY = os.environ.get("SERPAPI_KEY") 
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
-SUPABASE_URL = "https://gcyjrqgljtizcgekbsgf.supabase.co"
-
-    
-
-
-
+# llm = OpenAIChat(id="gpt-4o")
+llm = Groq(id="openai/gpt-oss-20b")
 
 class EvalveAgent:
 
@@ -60,8 +62,7 @@ class EvalveAgent:
     def __init__ (self):
 
         # System Prompts
-        self.insight_prompt = insight_system_prompt
-        self.knowledge_prompt = knowledge_system_prompt
+        self.sys_prompt = system_prompt()
 
         # Initialize core components
         self.db_manager = DatabaseManager(SUPABASE_URL, SUPABASE_KEY)
@@ -78,12 +79,13 @@ class EvalveAgent:
         insights_generator = Agent(
             name="StartupInsightsAnalyst",
             role="Senior Investment Analyst for Indian Startups",
+            model=llm,
             description=(
                 "You are a senior investment analyst specializing in Indian startup evaluation. "
                 "Your goal is to generate comprehensive, data-driven insights about startups to help "
                 "investors make informed investment decisions in the Indian market."
             ),
-            instructions=[self.insights_prompt],
+            instructions=[self.sys_prompt.startup_insight],
             tools=[],  
             add_datetime_to_instructions=True,
             show_tool_calls=True,
@@ -94,12 +96,13 @@ class EvalveAgent:
         startup_chatbot = Agent(
             name="StartupConsultantChatbot",
             role="Expert Startup Consultant for Interactive Queries",
+            model=llm,
             description=(
                 "You are an expert startup consultant chatbot with deep knowledge of Indian startups. "
                 "Your goal is to provide detailed, interactive assistance to investors seeking to "
                 "understand specific startups through conversational queries."
             ),
-            instructions=[self.knowledge_prompt],
+            instructions=[self.sys_prompt.Startup_Knowledge],
             tools=[SerpApiTools(search_youtube = True)],
             add_datetime_to_instructions=True,
             show_tool_calls=False,
@@ -115,7 +118,7 @@ class EvalveAgent:
         self.startup_analysis_team = Team(
             name="StartupAnalysisTeam",
             mode="coordinate",
-            model=OpenAIChat("gpt-4o"),
+            model=llm,
             members=[insights_generator, startup_chatbot],
             description=(
                 "You are a senior startup analysis team specializing in Indian startup evaluation. "
@@ -232,3 +235,14 @@ class EvalveAgent:
             "conversation_history_length": len(self.conversation_memory.history)
         }
     
+
+# import streamlit as st
+
+# st.title("Evalve - Connect with VCs")
+# st.write("Welcome To Evalve - Evovle and Evaluate Your Startup")
+
+# prompt = st.chat_input("Say something")
+
+# st.button("Search")
+
+

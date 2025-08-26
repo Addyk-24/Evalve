@@ -6,6 +6,7 @@ __pycache__/
 error.py
 new.py
 arch.txt
+query.sql
 # C extensions
 *.so
 
