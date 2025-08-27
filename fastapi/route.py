@@ -1,3 +1,7 @@
+from dotenv import load_dotenv
+load_dotenv() 
+
+import os
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -13,13 +17,22 @@ dm = DatabaseManager()
 ea = EvalveAgent()
 cm = ConversationMemory()
 
-# cm._generate_session_id()
 
 class ChatModel(BaseModel):
     query : str
     session_id : str
 
 app = FastAPI()
+
+
+# Mount static files (built Vite app)
+if os.path.exists("static"):
+    app.mount("/web", StaticFiles(directory="web"), name="web")
+
+# API routes
+@app.get("/api/health")
+async def health_check():
+    return {"status": "healthy"}
 
 @app.get("/")
 def root():
