@@ -8,6 +8,7 @@ new.py
 demo-app.py
 arch.txt
 query.sql
+js_supabase
 # C extensions
 *.so
 
