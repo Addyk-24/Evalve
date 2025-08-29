@@ -6,9 +6,11 @@ __pycache__/
 error.py
 new.py
 demo-app.py
+miscl.py
 arch.txt
 query.sql
 js_supabase
+raw.ts
 # C extensions
 *.so
 
