@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 load_dotenv()
-import sys
+
 import os
 from database.DatabaseManager import DatabaseManager
 from datetime import datetime
@@ -10,8 +10,8 @@ import json
 from dataclasses import dataclass
 
 
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
-SUPABASE_URL = os.environ.get("SUPABASE_URL") 
 
 @dataclass
 class ConversationRecord:
@@ -27,11 +27,10 @@ class ConversationRecord:
 class ConversationMemory:
     """Enhanced conversation memory management for AI agents"""
     
-    def __init__(self, session_id: str = None):
+    def __init__(self,session_id: str = None):
         self.history = []
-        self.context_window = 15 
-        # self.db_manager = DatabaseManager()
-        self.db_manager = DatabaseManager(SUPABASE_URL, SUPABASE_KEY)
+        self.context_window = 15  # Increased for better context
+        self.db_manager = DatabaseManager(SUPABASE_URL,SUPABASE_KEY)
         self.session_id = session_id or self._generate_session_id()
         self.current_startup_id = None
         self.conversation_metadata = {
@@ -60,7 +59,7 @@ class ConversationMemory:
         """Add a conversation exchange with enhanced metadata"""
         
         if not query.strip() or not response.strip():
-            print("Empty query or response, skipping...")
+            print("⚠️ Empty query or response, skipping...")
             return False
         
         try:
@@ -99,15 +98,16 @@ class ConversationMemory:
                 
                 success = self.db_manager.save_conversation_with_context(conversation_record)
                 if success:
-                    print(f"Conversation saved to database")
+                    print(f"💾 Conversation saved to database")
                 else:
-                    print("Failed to save conversation to database")
+                    print("⚠️ Failed to save conversation to database")
             
             return True
             
         except Exception as e:
             print(f"❌ Error adding exchange: {str(e)}")
             return False
+    
     def get_context_string(self, max_exchanges: int = 5, include_metadata: bool = True) -> str:
         """Get formatted conversation history for AI context"""
         if not self.history:
@@ -160,7 +160,10 @@ class ConversationMemory:
         
         return "\n".join(context_parts)
     
-    def get_relevant_history(self,current_query: str,max_results: int = 3,min_relevance: float = 0.1) -> List[Dict]:
+    def get_relevant_history(self, 
+                           current_query: str, 
+                           max_results: int = 3,
+                           min_relevance: float = 0.1) -> List[Dict]:
         """Enhanced relevance matching with better scoring"""
         if not self.history:
             return []
@@ -186,10 +189,11 @@ class ConversationMemory:
             common_words = query_words.intersection(exchange_words)
             
             if common_words:
+                # Multiple scoring factors
                 word_overlap = len(common_words) / len(query_words)
                 text_similarity = len(common_words) / len(exchange_words.union(query_words))
                 
-                # Boost score if same startup 
+                # Boost score if same startup context
                 startup_boost = 1.5 if (exchange.get('startup_id') == self.current_startup_id and self.current_startup_id) else 1.0
                 
                 # Recent conversations get slight boost
@@ -318,8 +322,7 @@ class ConversationMemory:
         }
         
         if format.lower() == "json":
-            # return json.dumps(export_data, indent=2, ensure_ascii=False)
-            return export_data
+            return json.dumps(export_data, indent=2, ensure_ascii=False)
         elif format.lower() == "text":
             lines = [f"Conversation Export - Session: {self.session_id}"]
             lines.append(f"Generated: {datetime.now().isoformat()}")

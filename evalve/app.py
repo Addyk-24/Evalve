@@ -42,10 +42,10 @@ knowledge_system_prompt = system_prompt.Startup_Knowledge
 web_scrapping = SerpApiTools()
 
 SUPABASE_DB_PASSWORD = os.environ.get("SUPABASE_DB_PASSWORD")
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 SERPAPI_KEY = os.environ.get("SERPAPI_KEY") 
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 # llm = OpenAIChat(id="gpt-4o")
@@ -61,7 +61,7 @@ class EvalveAgent:
         # Initialize core components
         self.db_manager = DatabaseManager(SUPABASE_URL, SUPABASE_KEY)
         self.memory_graph = MemoryGraph()
-        self.conversation_memory = ConversationMemory(self.db_manager)
+        self.conversation_memory = ConversationMemory()
         
         # Initialize AI agent
         self.create_startup_analysis_team()

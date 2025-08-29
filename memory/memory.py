@@ -8,6 +8,7 @@ class MemoryGraph:
     """Enhanced knowledge graph for startup investment platform"""
     
     def __init__(self):
+        self._state = "initialized" 
         self.entities = {}
         self.relationships = []
         self.entity_index = defaultdict(set)  # Index entities by type
