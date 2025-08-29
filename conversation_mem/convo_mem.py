@@ -1,9 +1,17 @@
-from database import DatabaseManager
+from dotenv import load_dotenv
+load_dotenv()
+import sys
+import os
+from database.DatabaseManager import DatabaseManager
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 import uuid
 import json
 from dataclasses import dataclass
+
+
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+SUPABASE_URL = os.environ.get("SUPABASE_URL") 
 
 @dataclass
 class ConversationRecord:
@@ -22,7 +30,8 @@ class ConversationMemory:
     def __init__(self, session_id: str = None):
         self.history = []
         self.context_window = 15 
-        self.db_manager = DatabaseManager()
+        # self.db_manager = DatabaseManager()
+        self.db_manager = DatabaseManager(SUPABASE_URL, SUPABASE_KEY)
         self.session_id = session_id or self._generate_session_id()
         self.current_startup_id = None
         self.conversation_metadata = {
@@ -309,7 +318,8 @@ class ConversationMemory:
         }
         
         if format.lower() == "json":
-            return json.dumps(export_data, indent=2, ensure_ascii=False)
+            # return json.dumps(export_data, indent=2, ensure_ascii=False)
+            return export_data
         elif format.lower() == "text":
             lines = [f"Conversation Export - Session: {self.session_id}"]
             lines.append(f"Generated: {datetime.now().isoformat()}")
