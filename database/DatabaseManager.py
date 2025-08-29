@@ -3,6 +3,7 @@ load_dotenv()
 import sys
 import os
 
+
 from memory.memory import MemoryGraph
 
 from typing import Dict, List, Any, Optional, Tuple
@@ -50,12 +51,14 @@ class ConversationRecord:
     startup_id: str = None
     user_id: str = None
     context_used: str = ""
-    # query_intent: str = ""
+    agent_type : str = "chatbot"
+
 
 class DatabaseManager:
     """Enhanced database manager for startup platform with AI agent integration"""
     
     def __init__(self, SUPABASE_URL: str, SUPABASE_KEY: str,):
+        self._state = "connected" 
         self.supabase_url = SUPABASE_URL
         self.supabase_key = SUPABASE_KEY
         self.memory_graph = memory_graph
@@ -80,6 +83,19 @@ class DatabaseManager:
         """Check if database is connected"""
         return self.connected and self.supabase is not None
     
+        
+    def get_conversation_history(self, session_id: str, limit: int = 10):
+        """Get conversation history for a session"""
+        try:
+            # Assuming you have a conversation_history table
+            response = self.supabase.table('conversation_history').select('*').eq('session_id', session_id).order('created_at', desc=True).limit(limit).execute()
+            
+            return response.data if response.data else []
+                
+        except Exception as e:
+            print(f"Error getting conversation history: {e}")
+            return []
+        
     # =================== STARTUP PROFILE MANAGEMENT ===================
     
     def generate_startup_id(self, company_name: str) -> str:
@@ -295,11 +311,13 @@ class DatabaseManager:
         except Exception as e:
             print(f"Error getting startup insights: {str(e)}")
             return None
+        
     
     # =================== CHATBOT SPECIFIC METHODS ===================
     
     def save_conversation_with_context(self, conversation_data: ConversationRecord) -> Optional[str]:
         """Save conversation with enhanced context for chatbot"""
+
         if not self.is_connected():
             return None
             
@@ -310,8 +328,7 @@ class DatabaseManager:
                 'query': conversation_data.user_query,
                 'response': conversation_data.agent_response,
                 'context': conversation_data.context_used,
-                'agent_type': 'chatbot',
-                # 'query_intent': conversation_data.query_intent,
+                'agent_type': conversation_data.agent_type,
                 'user_id': conversation_data.user_id,
                 'timestamp': datetime.now().isoformat()
             }
@@ -663,3 +680,4 @@ try:
 except Exception as e:
     print(f"Failed to initialize DatabaseManager: {e}")
     db_manager = None
+
