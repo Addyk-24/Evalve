@@ -1,0 +1,156 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* INDEV.AI Design System - Professional Black & White Investment Platform */
+
+@layer base {
+  :root {
+    /* Core Black & White Palette */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 8%;
+    
+    /* Investment Platform Colors */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 8%;
+    --card-border: 0 0% 90%;
+    --card-hover: 0 0% 97%;
+    
+    /* Interactive Elements */
+    --primary: 0 0% 8%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 95%;
+    --secondary-foreground: 0 0% 15%;
+    --accent: 0 0% 92%;
+    --accent-foreground: 0 0% 20%;
+    
+    /* Semantic Colors */
+    --muted: 0 0% 95%;
+    --muted-foreground: 0 0% 45%;
+    --border: 0 0% 90%;
+    --input: 0 0% 95%;
+    --ring: 0 0% 8%;
+    
+    /* Sidebar */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 0 0% 20%;
+    --sidebar-primary: 0 0% 8%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 0 0% 95%;
+    --sidebar-accent-foreground: 0 0% 15%;
+    --sidebar-border: 0 0% 88%;
+    --sidebar-ring: 0 0% 8%;
+    
+    /* Popover */
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 8%;
+    
+    /* Destructive (for errors) */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    
+    /* Design System */
+    --radius: 0.75rem;
+  }
+  
+  .dark {
+    /* Dark mode can be added later if needed */
+    --background: 0 0% 8%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 95%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer components {
+  /* Investment Card Component */
+  .investment-card {
+    @apply bg-card border border-card-border rounded-xl p-6 transition-all duration-300;
+    box-shadow: var(--shadow-card);
+  }
+  
+  .investment-card:hover {
+    @apply bg-card-hover transform -translate-y-1;
+    box-shadow: var(--shadow-card-hover);
+  }
+  
+  /* Professional Button Variants */
+  .btn-invest {
+    @apply bg-primary text-primary-foreground px-6 py-2.5 rounded-lg font-medium transition-all duration-200;
+  }
+  
+  .btn-invest:hover {
+    @apply bg-primary/90 transform scale-105;
+  }
+  
+  /* Filter Item */
+  .filter-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 cursor-pointer;
+  }
+  
+  .filter-item:hover {
+    @apply bg-sidebar-accent text-sidebar-accent-foreground;
+  }
+  
+  .filter-item.active {
+    @apply bg-sidebar-primary text-sidebar-primary-foreground font-medium;
+  }
+  
+  /* Scrollbar Styling */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 3px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+}
+
+@layer utilities {
+  /* Animation Utilities */
+  .animate-card-hover {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-lg;
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Text Gradients */
+  .text-gradient {
+    background: linear-gradient(135deg, hsl(var(--foreground)), hsl(var(--muted-foreground)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
