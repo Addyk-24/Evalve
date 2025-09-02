@@ -147,7 +147,14 @@ def root():
 
 @app.post("/api/signup/investor")
 def create_inverstor(data: InvestorProfile):
-    pass
+    if not dm:
+        raise HTTPException(status_code=503, detail="Database service unavailable")
+    try: 
+        new_investor_entry = dm.save_investor_profile(data.model_dump())
+        return {"status": "success", "id": new_investor_entry.get("id")}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
 
 
 @app.post("/api/signup/entrepreneur")

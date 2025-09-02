@@ -95,6 +95,67 @@ class DatabaseManager:
         except Exception as e:
             print(f"Error getting conversation history: {e}")
             return []
+    # =================== INVESTOR PROFILE MANAGEMENT ===================
+
+    def generate_investor_id(self, investor_name: str) -> str:
+        """Generate unique investor ID"""
+        base_id = investor_name.replace(" ", "_").upper()[:10]
+        unique_suffix = str(uuid.uuid4())[:8].upper()
+        return f"INV_{base_id}_{unique_suffix}"
+
+    
+    def save_investor_profile(self, investor_data: Dict[str, Any]) -> Optional[str]:
+        """Save complete Investor profile to database with validation"""
+        if not self.is_connected():
+            print("❌ Database not connected")
+            return None
+        
+        # Validate required fields
+        required_fields = ['name', 'phone', 'email','location']
+        for field in required_fields:
+            if not investor_data.get(field):
+                print(f"❌ Missing required field: {field}")
+                return None
+            
+        try:
+            # Generate investor_id if not provided
+            if not investor_data.get('investor_id'):
+                investor_data['investor_id'] = self.generate_investor_id(investor_data['name'])
+            
+            # Prepare Investor profile data with proper JSON serialization
+            profile_data = {
+                'investor_id': investor_data['investor_id'],
+                'name': investor_data.get('name'),
+                'email': investor_data.get('email'),
+                'phone': investor_data.get('phone'),
+                'location': investor_data.get('location'),
+                'type': investor_data.get('type'),
+                'min_investment': investor_data.get('min_investment'),
+                'max_investment': investor_data.get('max_investment'),
+                'preferred_industries': investor_data.get('preferred_industries'),
+                'geographic_focus': investor_data.get('geographic_focus'),
+    
+
+            }
+            
+            # Insert Investor profile
+            result = self.supabase.table('investor_profiles').insert(profile_data).execute()
+            
+            if not result.data:
+                print("❌ Failed to insert Investor profile")
+                return None
+                
+            investor_id = result.data[0]['investor_id']
+            print(f"✅ Investor profile saved with ID: {investor_id}")
+    
+            
+            return investor_id
+            
+        except Exception as e:
+            print(f"❌ Error saving Investor profile: {str(e)}")
+            return None
+
+
         
     # =================== STARTUP PROFILE MANAGEMENT ===================
     
