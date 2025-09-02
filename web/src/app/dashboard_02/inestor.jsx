@@ -1,9 +1,8 @@
 import { CheckCircle, ArrowLeft, Users, TrendingUp, Mail } from "lucide-react";
-export default function Dashboard() {
-  const handleRegisterIPO = () => {
+export default function Invest() {
+  const HandleRegisterIPO = () => {
     window.location.href = 'http://localhost:8080/';
-  };
-
+  }
   return (
     <>
       <link
@@ -98,11 +97,10 @@ export default function Dashboard() {
               <ArrowLeft size={20} />
               Back to Homepage
             </a>
-            
             <button className="bg-black dark:bg-white text-white dark:text-black px-8 py-3 rounded-full font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-all duration-200"
-            onClick={handleRegisterIPO}
+            onClick={HandleRegisterIPO}
             >
-              Want To Registor you IPO ?
+              Want To Registor As Investor ?
             </button>
           </div>
 
