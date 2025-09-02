@@ -1,9 +1,16 @@
+from dotenv import load_dotenv
+load_dotenv()
+
+import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, EmailStr, HttpUrl
 from typing import List, Optional
 from sqlalchemy import create_engine, Column, Integer, String, Float, Text, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 DATABASE_URL = "postgresql://postgres:Cadbury%40123@localhost:5432/Enterprenuer_db"
 
 engine = create_engine(DATABASE_URL)
@@ -44,6 +51,7 @@ class Entrepreneur(Base):
 Base.metadata.create_all(bind=engine)
 
 class Founder(BaseModel):
+    # DONE IN SUPABASE
     name: str
     role: str
     education: Optional[str]
@@ -63,7 +71,7 @@ class EntrepreneurSchema(BaseModel):
     website: Optional[HttpUrl]
     email: EmailStr
     phone: str
-    founders: List[Founder]
+    # founders: List[Founder]
     problemStatement: str
     solutionDescription: str
     targetMarket: str
@@ -71,11 +79,11 @@ class EntrepreneurSchema(BaseModel):
     pricingStrategy: Optional[str]
     competitiveAdvantage: str
     teamSize: int
-    keyMembers: Optional[str]
+    # keyMembers: Optional[str]
     techStack: Optional[str]
     operationalMetrics: Optional[str]
     monthlyRevenue: Optional[float]
-    burnRate: Optional[float]
+    # burnRate: Optional[float]
     cashPosition: Optional[float]
     revenueProjections: Optional[str]
     breakEvenTimeline: Optional[str]
