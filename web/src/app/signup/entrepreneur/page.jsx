@@ -66,22 +66,23 @@ export default function EntrepreneurSignup() {
   };
 
   const handleSubmit = async () => {
-    try {
-      const response = await fetch('/api/signup/entrepreneur', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-      
-      if (response.ok) {
-        window.location.href = '/dashboard';
-      } else {
-        alert('Failed to submit application. Please try again.');
-      }
-    } catch (error) {
-      console.error('Submission error:', error);
-      alert('Failed to submit application. Please try again.');
-    }
+    // try {
+    //   const response = await fetch('/api/signup/entrepreneur', {
+    //     method: 'POST',
+    //     headers: { 'Content-Type': 'application/json' },
+    //     body: JSON.stringify(formData)
+    //   });
+
+    //   if (response.ok) {
+    //     window.location.href = '/dashboard';
+    //   } else {
+    //     alert('Failed to submit application. Please try again.');
+    //   }
+    // } catch (error) {
+    //   console.error('Submission error:', error);
+    //   alert('Failed to submit application. Please try again.');
+    // }
+    window.location.href = '/dashboard';
   };
 
   const totalSteps = 5;
@@ -92,7 +93,7 @@ export default function EntrepreneurSignup() {
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
         rel="stylesheet"
       />
-      
+
       <div className="min-h-screen bg-white dark:bg-black" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
         {/* Header */}
         <div className="border-b border-gray-200 dark:border-gray-800">
@@ -106,10 +107,10 @@ export default function EntrepreneurSignup() {
                 Step {currentStep} of {totalSteps}
               </div>
             </div>
-            
+
             {/* Progress Bar */}
             <div className="mt-6 bg-gray-200 dark:bg-gray-800 rounded-full h-2">
-              <div 
+              <div
                 className="bg-black dark:bg-white h-2 rounded-full transition-all duration-300"
                 style={{ width: `${(currentStep / totalSteps) * 100}%` }}
               ></div>
