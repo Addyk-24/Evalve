@@ -86,6 +86,8 @@ class InvestorProfile(BaseModel):
     email : str
     phone: str
     location: str
+    # linkedIn
+    # Investortype - Angel, VC, etc
     type: str
     min_investment: Optional[float]
     max_investment: Optional[float]
