@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from pydantic import BaseModel
+from pydantic import BaseModel,HttpUrl
 from typing import Optional, List, Dict, Any
 
 from database.DatabaseManager import DatabaseManager
@@ -43,6 +43,45 @@ class ChatResponse(BaseModel):
     response: str
     session_id: str
     startup_id: str
+
+class Founder(BaseModel):
+    # DONE IN SUPABASE
+    name: str
+    role: str
+    education: Optional[str]
+    institution: Optional[str]
+    experience: Optional[str]
+    equityShare: Optional[float]
+    linkedIn: Optional[HttpUrl]
+
+class StartupProfile(BaseModel):
+    companyLegalName: str
+    companyBrandName: Optional[str]
+    industry_sector: str
+    stage: str
+    funding_stage: Optional[str]
+    funding_amount_required: Optional[float]
+    city: str
+    state: str
+    website: Optional[HttpUrl]
+    email: str
+    phone: str
+    problemStatement: str
+    solutionDescription: str
+    targetMarket: str
+    revenueModel: str
+    pricingStrategy: Optional[str]
+    competitiveAdvantage: str
+    teamSize: int
+    techStack: Optional[str]
+    operationalMetrics: Optional[str]
+    monthlyRevenue: Optional[float]
+    burnRate: Optional[float]
+    cashPosition: Optional[float]
+    revenueProjections: Optional[str]
+    breakEvenTimeline: Optional[str]
+
+
 
 
 app = FastAPI(
@@ -95,6 +134,18 @@ async def health_check():
 @app.get("/")
 def root():
     return {"message": "Welcome To Evalve"}
+
+
+@app.post("/api/signup/entrepreneur")
+def create_entrepreneur(data: StartupProfile):
+    """ Create Entrepreneur Signup"""
+    if not dm:
+        raise HTTPException(status_code=503, detail="Database service unavailable")
+    try:
+        new_entry = dm.save_startup_profile(data.model_dump())
+        return {"status": "success", "id": new_entry.get("id")}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 
