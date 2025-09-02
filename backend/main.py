@@ -81,6 +81,16 @@ class StartupProfile(BaseModel):
     revenueProjections: Optional[str]
     breakEvenTimeline: Optional[str]
 
+class InvestorProfile(BaseModel):
+    name : str
+    email : str
+    phone: str
+    location: str
+    type: str
+    min_investment: Optional[float]
+    max_investment: Optional[float]
+    preferred_industries: Optional[dict]
+    geographic_focus: Optional[dict]
 
 
 
@@ -134,6 +144,10 @@ async def health_check():
 @app.get("/")
 def root():
     return {"message": "Welcome To Evalve"}
+
+@app.post("/api/signup/investor")
+def create_inverstor(data: InvestorProfile):
+    pass
 
 
 @app.post("/api/signup/entrepreneur")
