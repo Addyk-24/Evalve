@@ -66,23 +66,152 @@ export default function EntrepreneurSignup() {
   };
 
   const handleSubmit = async () => {
-    // try {
-    //   const response = await fetch('/api/signup/entrepreneur', {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify(formData)
-    //   });
+    try {
+    // Basic client-side validation (keep your existing validation)
+    const requiredFields = {
+      companyLegalName: 'Company Legal Name',
+      registrationStatus: 'Registration Status',
+      industry: 'Industry',
+      stage: 'Current Stage',
+      city: 'City',
+      state: 'State',
+      email: 'Email',
+      phone: 'Phone',
+      problemStatement: 'Problem Statement',
+      solutionDescription: 'Solution Description',
+      targetMarket: 'Target Market',
+      revenueModel: 'Revenue Model',
+      competitiveAdvantage: 'Competitive Advantage'
+    };
 
-    //   if (response.ok) {
-    //     window.location.href = '/dashboard';
-    //   } else {
-    //     alert('Failed to submit application. Please try again.');
-    //   }
-    // } catch (error) {
-    //   console.error('Submission error:', error);
-    //   alert('Failed to submit application. Please try again.');
-    // }
-    window.location.href = '/dashboard';
+    const missingFields = [];
+    for (const [field, label] of Object.entries(requiredFields)) {
+      if (!formData[field] || formData[field].trim() === '') {
+        missingFields.push(label);
+      }
+    }
+
+    // Check founders
+    if (!formData.founders || formData.founders.length === 0) {
+      missingFields.push('At least one founder');
+    } else {
+      formData.founders.forEach((founder, index) => {
+        if (!founder.name || founder.name.trim() === '') {
+          missingFields.push(`Founder ${index + 1} name`);
+        }
+        if (!founder.role || founder.role.trim() === '') {
+          missingFields.push(`Founder ${index + 1} role`);
+        }
+      });
+    }
+
+    if (missingFields.length > 0) {
+      alert('Please fill in the following required fields:\n\n' + missingFields.join('\n'));
+      return;
+    }
+
+    // Transform data to match backend model
+    const transformedData = {
+      // Company Information
+      companyLegalName: formData.companyLegalName,
+      companyBrandName: formData.companyBrandName || null,
+      industry: formData.industry,  // Map to correct field name
+      stage: formData.stage,
+      city: formData.city,
+      state: formData.state,
+      website: formData.website || null,
+      email: formData.email,
+      phone: formData.phone,
+      
+      // Business Model & Product
+      problemStatement: formData.problemStatement,
+      solutionDescription: formData.solutionDescription,
+      targetMarket: formData.targetMarket,
+      revenueModel: formData.revenueModel,
+      pricingStrategy: formData.pricingStrategy || null,
+      competitiveAdvantage: formData.competitiveAdvantage,
+      
+      // Team & Operations
+      teamSize: formData.teamSize ? parseInt(formData.teamSize) : null,
+      techStack: formData.techStack || null,
+      operationalMetrics: formData.operationalMetrics || null,
+      
+      // Financial Information
+      monthlyRevenue: formData.monthlyRevenue ? parseFloat(formData.monthlyRevenue) : null,
+      burnRate: formData.burnRate ? parseFloat(formData.burnRate) : null,
+      cashPosition: formData.cashPosition ? parseFloat(formData.cashPosition) : null,
+      revenueProjections: formData.revenueProjections || null,
+      breakEvenTimeline: formData.breakEvenTimeline || null,
+      
+      // Add required fields with default values
+      funding_stage: null,
+      funding_amount_required: null,
+      
+      // Transform founders data
+      founders: formData.founders.map(founder => ({
+        name: founder.name,
+        role: founder.role,
+        education: founder.education || null,
+        institution: founder.institution || null,
+        experience: founder.experience || null,
+        equityShare: founder.equityShare ? parseFloat(founder.equityShare) : null,
+        linkedin_profile: founder.linkedIn || null  // Map to correct field name
+      }))
+    };
+
+    console.log('Submitting transformed data:', transformedData);
+    const apiUrl = 'http://localhost:8000'
+    const response = await fetch(`${apiUrl}/api/signup/entrepreneur`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(transformedData)
+    });
+
+    console.log('Response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Server response error:', errorText);
+      
+      try {
+        const errorData = JSON.parse(errorText);
+        if (errorData.detail && Array.isArray(errorData.detail)) {
+          // Handle Pydantic validation errors
+          const errorMessages = errorData.detail.map(err => `${err.loc.join('.')}: ${err.msg}`);
+          alert('Please fix the following errors:\n\n' + errorMessages.join('\n'));
+        } else {
+          alert(errorData.detail || errorData.error || 'Server error occurred. Please try again.');
+        }
+      } catch (parseError) {
+        alert(`Server error (${response.status}): ${errorText}`);
+      }
+      return;
+    }
+
+    const result = await response.json();
+    console.log('Success response:', result);
+
+    if (result.status === 'success') {
+      alert('Application submitted successfully!');
+      // Redirect or handle success
+      window.location.href = '/dashboard';
+    } else {
+      alert(result.error || 'Failed to submit application. Please try again.');
+    }
+
+  } catch (error) {
+    console.error('Submission error:', error);
+    
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      alert('Network error: Please check your internet connection and try again.');
+    } else {
+      alert('An unexpected error occurred. Please try again.\n\nError: ' + error.message);
+    }
+  }
+
   };
 
   const totalSteps = 5;

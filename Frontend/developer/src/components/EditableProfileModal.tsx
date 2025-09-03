@@ -1,4 +1,7 @@
 import { useState } from 'react';
+
+// import api from "../api.js";
+
 import {
   Dialog,
   DialogContent,
@@ -170,8 +173,7 @@ export function EditableProfileModal({ isOpen, onClose }: EditableProfileModalPr
       techStack: ['React', 'Node.js', 'PostgreSQL', 'AWS', 'Docker']
     }
   });
-
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsEditing(false);
     // Here you would typically save to your backend
   };
