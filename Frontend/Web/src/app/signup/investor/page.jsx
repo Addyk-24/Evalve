@@ -91,6 +91,7 @@ export default function InvestorSignup() {
       portfolio_size: formData.portfolioSize,
     }
     console.log('Submitting transformed data:', transformedData);
+
     const apiUrl = 'http://localhost:8000'
     const response = await fetch(`${apiUrl}/api/signup/entrepreneur`, {
       method: 'POST',
@@ -103,6 +104,35 @@ export default function InvestorSignup() {
 
     console.log('Response status:', response.status);
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Server response error:', errorText);
+      try {
+        const errorData = JSON.parse(errorText);
+        if (errorData.detail && Array.isArray(errorData.detail)) {
+          // Handle Pydantic validation errors
+          const errorMessages = errorData.detail.map(err => `${err.loc.join('.')}: ${err.msg}`);
+          alert('Please fix the following errors:\n\n' + errorMessages.join('\n'));
+        } else {
+          alert(errorData.detail || errorData.error || 'Server error occurred. Please try again.');
+        }
+      } catch (parseError) {
+        alert(`Server error (${response.status}): ${errorText}`);
+      }
+      return;
+    }
+    const result = await response.json();
+    console.log('Success response:', result);
+
+    if (result.status === 'success') {
+      alert('Application submitted successfully!');
+      // Redirect or handle success
+      window.location.href = '/dashboard';
+    } else {
+      alert(result.error || 'Failed to submit application. Please try again.');
+    }
+
+
     } catch (error) {
     console.error('Submission error:', error);
     
@@ -112,7 +142,6 @@ export default function InvestorSignup() {
       alert('An unexpected error occurred. Please try again.\n\nError: ' + error.message);
     }
   }
-    window.location.href = '/dashboard_02/inestor';
   };
 
   const totalSteps = 4;
