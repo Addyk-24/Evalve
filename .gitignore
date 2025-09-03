@@ -3,6 +3,15 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+.env.local
+error.py
+new.py
+demo-app.py
+miscl.py
+arch.txt
+query.sql
+js_supabase
+raw.ts
 # C extensions
 *.so
 
