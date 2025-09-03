@@ -53,6 +53,65 @@ export default function InvestorSignup() {
 
   const handleSubmit = async () => {
     // here we would have request
+    try {
+    const requiredFields = {
+      name: 'Investor name',
+      email: 'Email',
+      phone: 'Phone number',
+      location: 'Location ',
+      investor_type: 'Investor type',
+    }
+    const missingFields = [];
+    for (const [field, label] of Object.entries(requiredFields)) {
+      if (!formData[field] || formData[field].trim() === '') {
+        missingFields.push(label);
+      }
+    }
+    if (missingFields.length > 0) {
+      alert('Please fill in the following required fields:\n\n' + missingFields.join('\n'));
+      return;
+    }
+
+    // Transform data to match backend model
+    const transformedData = {
+      name: formData.firstName + ' ' + formData.lastName,
+      email: formData.email,
+      phone: formData.phone,
+      linkedin: formData.linkedIn,
+      location: formData.location,
+      investor_type: formData.investorType,
+      organization: formData.organization,
+      title: formData.title,
+      experience: formData.experience,
+      investment_stage: formData.investmentStage,
+      industry_focus: formData.industryFocus,
+      geography_focus: formData.geographyFocus,
+      investment_range: formData.investmentRange,
+      previous_investments: formData.previousInvestments,
+      portfolio_size: formData.portfolioSize,
+    }
+    console.log('Submitting transformed data:', transformedData);
+    const apiUrl = 'http://localhost:8000'
+    const response = await fetch(`${apiUrl}/api/signup/entrepreneur`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(transformedData)
+    });
+
+    console.log('Response status:', response.status);
+
+    } catch (error) {
+    console.error('Submission error:', error);
+    
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      alert('Network error: Please check your internet connection and try again.');
+    } else {
+      alert('An unexpected error occurred. Please try again.\n\nError: ' + error.message);
+    }
+  }
     window.location.href = '/dashboard_02/inestor';
   };
 
