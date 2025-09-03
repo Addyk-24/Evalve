@@ -53,95 +53,126 @@ export default function InvestorSignup() {
 
   const handleSubmit = async () => {
     // here we would have request
-    try {
-    const requiredFields = {
-      name: 'Investor name',
-      email: 'Email',
-      phone: 'Phone number',
-      location: 'Location ',
-      investor_type: 'Investor type',
-    }
-    const missingFields = [];
-    for (const [field, label] of Object.entries(requiredFields)) {
-      if (!formData[field] || formData[field].trim() === '') {
-        missingFields.push(label);
-      }
-    }
-    if (missingFields.length > 0) {
-      alert('Please fill in the following required fields:\n\n' + missingFields.join('\n'));
-      return;
-    }
 
-    // Transform data to match backend model
-    const transformedData = {
-      name: formData.firstName + ' ' + formData.lastName,
-      email: formData.email,
-      phone: formData.phone,
-      linkedin: formData.linkedIn,
-      location: formData.location,
-      investor_type: formData.investorType,
-      organization: formData.organization,
-      title: formData.title,
-      experience: formData.experience,
-      investment_stage: formData.investmentStage,
-      industry_focus: formData.industryFocus,
-      geography_focus: formData.geographyFocus,
-      investment_range: formData.investmentRange,
-      previous_investments: formData.previousInvestments,
-      portfolio_size: formData.portfolioSize,
+    function parseInvestmentRange(range) {
+    // Example: "$1K - $25K" => { min: 1000, max: 25000 }
+    if (!range) return { min: null, max: null };
+    const match = range.match(/\$([\d,]+)[K,M]? - \$([\d,]+)[K,M]?/);
+    if (match) {
+      const min = parseInt(match[1].replace(/,/g, '')) * 1000;
+      const max = parseInt(match[2].replace(/,/g, '')) * 1000;
+      return { min, max };
     }
-    console.log('Submitting transformed data:', transformedData);
+    if (range.includes('$10M+')) return { min: 10000000, max: null };
+    return { min: null, max: null };
+  }
 
-    const apiUrl = 'http://localhost:8000'
-    const response = await fetch(`${apiUrl}/api/signup/entrepreneur`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(transformedData)
-    });
+  const { min, max } = parseInvestmentRange(formData.investmentRange);
 
-    console.log('Response status:', response.status);
+  const preferredIndustriesObj = {};
+  formData.industryFocus.forEach(ind => preferredIndustriesObj[ind] = true);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Server response error:', errorText);
-      try {
-        const errorData = JSON.parse(errorText);
-        if (errorData.detail && Array.isArray(errorData.detail)) {
-          // Handle Pydantic validation errors
-          const errorMessages = errorData.detail.map(err => `${err.loc.join('.')}: ${err.msg}`);
-          alert('Please fix the following errors:\n\n' + errorMessages.join('\n'));
-        } else {
-          alert(errorData.detail || errorData.error || 'Server error occurred. Please try again.');
+  const geographicFocusObj = {};
+  formData.geographyFocus.forEach(geo => geographicFocusObj[geo] = true);
+
+  const typeMap = {
+    "Angel Investor": "Angel",
+    "VC Partner": "VC",
+    "Private Equity": "PE",
+    "Strategic Investor": "Strategic",
+    "Corporate Investor": "Corporate"
+  };
+
+
+  try {
+      // Check required fields before submission
+      const requiredFields = {
+        firstName: 'First Name',
+        lastName: 'Last Name',
+        email: 'Email',
+        phone: 'Phone number',
+        location: 'Location',
+        investorType: 'Investor type',
+      };
+      
+      const missingFields = [];
+      for (const [field, label] of Object.entries(requiredFields)) {
+        if (!formData[field] || formData[field].trim() === '') {
+          missingFields.push(label);
         }
-      } catch (parseError) {
-        alert(`Server error (${response.status}): ${errorText}`);
       }
-      return;
-    }
-    const result = await response.json();
-    console.log('Success response:', result);
+      
+      if (missingFields.length > 0) {
+        alert('Please fill in the following required fields:\n\n' + missingFields.join('\n'));
+        return;
+      }
 
-    if (result.status === 'success') {
-      alert('Application submitted successfully!');
-      // Redirect or handle success
-      window.location.href = '/dashboard';
-    } else {
-      alert(result.error || 'Failed to submit application. Please try again.');
-    }
+      // Transform data to match backend model (simplified for your database schema)
+      const transformedData = {
+        name: formData.firstName.trim() + ' ' + formData.lastName.trim(), // Combine first and last name
+        email: formData.email,
+        phone: formData.phone,
+        location: formData.location,
+        type:typeMap[formData.investorType] || "Angel",
+        min_investment: min,
+        max_investment: max,
+        preferred_industries: preferredIndustriesObj,
+        geographic_focus: geographicFocusObj
+      };
 
+      console.log('Submitting transformed data:', transformedData);
+
+      // Update API URL to use Next.js API route
+      const apiUrl = 'http://localhost:8000'
+      const response = await fetch(`${apiUrl}/api/signup/investor`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(transformedData)
+      });
+
+      console.log('Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server response error:', errorText);
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData.details && Array.isArray(errorData.details)) {
+            alert('Please fix the following errors:\n\n' + errorData.details.join('\n'));
+          } else {
+            alert(errorData.error || 'Server error occurred. Please try again.');
+          }
+        } catch (parseError) {
+          alert(`Server error (${response.status}): ${errorText}`);
+        }
+        return;
+      }
+
+      const result = await response.json();
+      console.log('Success response:', result);
+
+      if (result.status === 'success') {
+        alert('Application submitted successfully! We will review your application and get back to you within 2-3 business days.');
+        // Redirect or handle success
+        if (result.redirectUrl) {
+          window.location.href = result.redirectUrl;
+        }
+      } else {
+        alert(result.error || 'Failed to submit application. Please try again.');
+      }
 
     } catch (error) {
-    console.error('Submission error:', error);
-    
-    if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      alert('Network error: Please check your internet connection and try again.');
-    } else {
-      alert('An unexpected error occurred. Please try again.\n\nError: ' + error.message);
+      console.error('Submission error:', error);
+      
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        alert('Network error: Please check your internet connection and try again.');
+      } else {
+        alert('An unexpected error occurred. Please try again.\n\nError: ' + error.message);
+      }
     }
-  }
   };
 
   const totalSteps = 4;
@@ -294,11 +325,9 @@ export default function InvestorSignup() {
                     <option value="">Select investor type</option>
                     <option value="Angel Investor">Angel Investor</option>
                     <option value="VC Partner">VC Partner</option>
-                    <option value="Family Office">Family Office</option>
+                    <option value="VC Partner">Strategic Investor</option>
                     <option value="Corporate Investor">Corporate Investor</option>
                     <option value="Private Equity">Private Equity</option>
-                    <option value="Investment Bank">Investment Bank</option>
-                    <option value="Other">Other</option>
                   </select>
                 </div>
 
@@ -363,7 +392,7 @@ export default function InvestorSignup() {
                 {/* Investment Stage */}
                 <div>
                   <label className="block text-sm font-medium text-black dark:text-white mb-4">
-                    Investment Stage * (Select all that apply)
+                    Investment Stage (Select all that apply)
                   </label>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {['Pre-Seed', 'Seed', 'Series A', 'Series B', 'Series C+', 'Growth', 'IPO'].map(stage => (
@@ -383,7 +412,7 @@ export default function InvestorSignup() {
                 {/* Industry Focus */}
                 <div>
                   <label className="block text-sm font-medium text-black dark:text-white mb-4">
-                    Industry Focus * (Select all that apply)
+                    Industry Focus  (Select all that apply)
                   </label>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {['Fintech', 'Healthcare', 'SaaS', 'E-commerce', 'AI/ML', 'Edtech', 'Climate Tech', 'Biotech', 'Consumer', 'B2B', 'Other'].map(industry => (
@@ -403,7 +432,7 @@ export default function InvestorSignup() {
                 {/* Geography Focus */}
                 <div>
                   <label className="block text-sm font-medium text-black dark:text-white mb-4">
-                    Geography Focus (Select all that apply)
+                    Geography Focus * (Select all that apply)
                   </label>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {['North America', 'Europe', 'Asia', 'India', 'Latin America', 'Africa', 'Global'].map(geo => (
@@ -423,7 +452,7 @@ export default function InvestorSignup() {
                 {/* Investment Range */}
                 <div>
                   <label className="block text-sm font-medium text-black dark:text-white mb-2">
-                    Typical Investment Range *
+                    Typical Investment Range 
                   </label>
                   <select
                     value={formData.investmentRange}
@@ -508,7 +537,7 @@ export default function InvestorSignup() {
 
                 <div>
                   <label className="block text-sm font-medium text-black dark:text-white mb-2">
-                    Investment Criteria *
+                    Investment Criteria
                   </label>
                   <textarea
                     value={formData.investmentCriteria}

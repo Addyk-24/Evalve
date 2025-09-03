@@ -7,50 +7,65 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY // Use service role key for server-side operations
 );
 
-// Save startup data to existing startup_profiles table
-async function saveStartupToDatabase(formData) {
-  try {
-    // Insert into startup_profiles table
-    const { data: investorData, error: investorError } = await supabase
-      .from('investor_profiles')
-      .insert([
-        {
-      name: formData.firstName + ' ' + formData.lastName,
-      email: formData.email,
-      phone: formData.phone,
-      linkedin: formData.linkedIn,
-      location: formData.location,
-      investor_type: formData.investorType,
-      organization: formData.organization,
-      title: formData.title,
-      experience: formData.experience,
-      investment_stage: formData.investmentStage,
-      industry_focus: formData.industryFocus,
-      geography_focus: formData.geographyFocus,
-      investment_range: formData.investmentRange,
-      previous_investments: formData.previousInvestments,
-      portfolio_size: formData.portfolioSize,
-        }
-      ])
-      .select()
-      .single();
+// NO NEED OF THIS FUCNTION AS WE ARE REQUESTING THE FASTAPI ENDPOINT DIRECTLY
+// Save investor data to database
+// async function saveInvestorToDatabase(formData) {
+//   try {
+//     // Insert into investor_profiles table
+//     const { data: investorData, error: investorError } = await supabase
+//       .from('investor_profiles')
+//       .insert([
+//         {
+//           name: formData.name,
+//           email: formData.email,
+//           phone: formData.phone,
+//           linkedin: formData.linkedin,
+//           location: formData.location,
+//           type: formData.investor_type,
+//           organization: formData.organization,
+//           title: formData.title,
+//           experience: formData.experience,
+//           investment_stage: formData.investment_stage,
+//           industry_focus: formData.industry_focus,
+//           geography_focus: formData.geography_focus,
+//           investment_range: formData.investment_range,
+//           previous_investments: formData.previous_investments,
+//           portfolio_size: formData.portfolio_size,
+//           notable_investments: formData.notable_investments || null,
+//           investment_criteria: formData.investment_criteria || null,
+//           value_add: formData.value_add || null,
+//           time_commitment: formData.time_commitment || null,
+//           additional_info: formData.additional_info || null,
+//           created_at: new Date().toISOString(),
+//           updated_at: new Date().toISOString()
+//         }
+//       ])
+//       .select()
+//       .single();
 
-    if (investorError) {
-      throw new Error(`Failed to save startup data: ${investorError.message}`);
-    }
-    return {
-      id: investorData.investor_id,
-      name: investorData.name,
-      email: investorData.email,
-      createdAt: new Date().toISOString()
-    };
+//     if (investorError) {
+//       throw new Error(`Failed to save investor data: ${investorError.message}`);
+//     }
 
-  } catch (error) {
-    console.error('Database save error:', error);
-    throw error;
-  }
+//     return {
+//       id: investorData.investor_id,
+//       name: investorData.name,
+//       email: investorData.email,
+//       createdAt: investorData.created_at
+//     };
+
+//   } catch (error) {
+//     console.error('Database save error:', error);
+//     throw error;
+//   }
+// }
+
+// Send confirmation email (optional)
+async function sendConfirmationEmail(investorData) {
+  // Implement your email service here (SendGrid, Resend, etc.)
+  console.log('Sending confirmation email to:', investorData.email);
+  // This is a placeholder - implement actual email sending
 }
-
 
 export async function POST(request) {
   try {
@@ -70,9 +85,9 @@ export async function POST(request) {
     }
 
     // Save to database
-    const savedData = await saveStartupToDatabase(formData);
+    const savedData = await saveInvestorToDatabase(formData);
     
-    // Send confirmation email
+    // Send confirmation email (optional)
     try {
       await sendConfirmationEmail(savedData);
     } catch (emailError) {
@@ -81,28 +96,28 @@ export async function POST(request) {
     }
 
     // Log successful submission
-    console.log('Entrepreneur application saved:', {
+    console.log('Investor application saved:', {
       id: savedData.id,
-      company: savedData.companyName,
+      name: savedData.name,
       email: savedData.email,
       timestamp: savedData.createdAt
     });
 
     // Return success response
     return NextResponse.json({
-      success: true,
+      status: 'success',
       message: 'Application submitted successfully! We will review your application and get back to you within 2-3 business days.',
       applicationId: savedData.id,
       redirectUrl: '/dashboard'
     });
     
   } catch (error) {
-    console.error('Error processing entrepreneur signup:', error);
+    console.error('Error processing investor signup:', error);
     
     // Return appropriate error response
     return NextResponse.json(
       { 
-        success: false,
+        status: 'error',
         error: 'Internal server error. Please try again later.',
         details: process.env.NODE_ENV === 'development' ? error.message : undefined
       },
@@ -115,16 +130,17 @@ export async function POST(request) {
 function validateFormData(formData) {
   const errors = [];
 
-  // Required company fields
-  const requiredCompanyFields = {
-    Name: 'Company Legal Name',
+  // Required fields mapping
+  const requiredFields = {
+    name: 'Investor name',
     email: 'Email',
-    phone: 'Phone',
-    type: 'Industry_Type',
-    location: 'Location ',
+    phone: 'Phone number',
+    location: 'Location',
+    investor_type: 'Investor type',
   };
 
-  for (const [field, label] of Object.entries(requiredCompanyFields)) {
+  // Check required fields
+  for (const [field, label] of Object.entries(requiredFields)) {
     if (!formData[field] || formData[field].toString().trim() === '') {
       errors.push(`${label} is required`);
     }
@@ -140,10 +156,22 @@ function validateFormData(formData) {
     errors.push('Please provide a valid phone number');
   }
 
+  // LinkedIn URL validation (if provided)
+  if (formData.linkedin && formData.linkedin.trim() !== '' && !isValidUrl(formData.linkedin)) {
+    errors.push('Please provide a valid LinkedIn URL');
+  }
+
+  // Array field validation - these will be converted to objects
+  if (formData.industry_focus && !Array.isArray(formData.industry_focus)) {
+    errors.push('Industry focus must be an array');
+  }
+
+  if (formData.geography_focus && !Array.isArray(formData.geography_focus)) {
+    errors.push('Geography focus must be an array');
+  }
+
   return errors;
 }
-
-
 
 // Helper validation functions
 function isValidEmail(email) {
@@ -166,7 +194,7 @@ function isValidUrl(url) {
   }
 }
 
-// Optional: Handle other HTTP methods
+// Handle other HTTP methods
 export async function GET() {
   return NextResponse.json(
     { error: 'Method not allowed' },
