@@ -1,84 +1,189 @@
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY // Use service role key for server-side operations
+);
+
+// Save startup data to existing startup_profiles table
+async function saveStartupToDatabase(formData) {
+  try {
+    // Insert into startup_profiles table
+    const { data: investorData, error: investorError } = await supabase
+      .from('investor_profiles')
+      .insert([
+        {
+      name: formData.firstName + ' ' + formData.lastName,
+      email: formData.email,
+      phone: formData.phone,
+      linkedin: formData.linkedIn,
+      location: formData.location,
+      investor_type: formData.investorType,
+      organization: formData.organization,
+      title: formData.title,
+      experience: formData.experience,
+      investment_stage: formData.investmentStage,
+      industry_focus: formData.industryFocus,
+      geography_focus: formData.geographyFocus,
+      investment_range: formData.investmentRange,
+      previous_investments: formData.previousInvestments,
+      portfolio_size: formData.portfolioSize,
+        }
+      ])
+      .select()
+      .single();
+
+    if (investorError) {
+      throw new Error(`Failed to save startup data: ${investorError.message}`);
+    }
+    return {
+      id: investorData.investor_id,
+      name: investorData.name,
+      email: investorData.email,
+      createdAt: new Date().toISOString()
+    };
+
+  } catch (error) {
+    console.error('Database save error:', error);
+    throw error;
+  }
+}
+
+
 export async function POST(request) {
   try {
     const formData = await request.json();
-    
-    // Log the investor signup data
-    console.log('Investor signup data:', formData);
-    
-    // Basic validation
-    const requiredFields = [
-      'firstName', 
-      'lastName', 
-      'email', 
-      'phone', 
-      'location',
-      'investorType',
-      'experience',
-      'investmentRange'
-    ];
-    
-    const missingFields = requiredFields.filter(field => !formData[field]);
-    
-    if (missingFields.length > 0) {
-      return Response.json(
-        { error: `Missing required fields: ${missingFields.join(', ')}` },
+
+    // Comprehensive validation
+    const errors = validateFormData(formData);
+    if (errors.length > 0) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Validation failed',
+          details: errors 
+        },
         { status: 400 }
       );
     }
+
+    // Save to database
+    const savedData = await saveStartupToDatabase(formData);
     
-    // Validate arrays
-    if (!formData.investmentStage || formData.investmentStage.length === 0) {
-      return Response.json(
-        { error: 'Please select at least one investment stage' },
-        { status: 400 }
-      );
+    // Send confirmation email
+    try {
+      await sendConfirmationEmail(savedData);
+    } catch (emailError) {
+      console.error('Email sending failed:', emailError);
+      // Don't fail the entire request if email fails
     }
-    
-    if (!formData.industryFocus || formData.industryFocus.length === 0) {
-      return Response.json(
-        { error: 'Please select at least one industry focus' },
-        { status: 400 }
-      );
-    }
-    
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      return Response.json(
-        { error: 'Please provide a valid email address' },
-        { status: 400 }
-      );
-    }
-    
-    // Check required investment criteria
-    if (!formData.investmentCriteria) {
-      return Response.json(
-        { error: 'Investment criteria is required' },
-        { status: 400 }
-      );
-    }
-    
-    // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // In a real application, you would:
-    // - Save the data to a database
-    // - Create an investor profile
-    // - Send confirmation emails
-    // - Set up matching preferences
-    // - Verify accreditation status
-    
-    return Response.json({
+
+    // Log successful submission
+    console.log('Entrepreneur application saved:', {
+      id: savedData.id,
+      company: savedData.companyName,
+      email: savedData.email,
+      timestamp: savedData.createdAt
+    });
+
+    // Return success response
+    return NextResponse.json({
       success: true,
-      message: 'Application submitted successfully! We will review your investor profile and get back to you soon.',
-      applicationId: `INV-${Date.now()}`
+      message: 'Application submitted successfully! We will review your application and get back to you within 2-3 business days.',
+      applicationId: savedData.id,
+      redirectUrl: '/dashboard'
     });
     
   } catch (error) {
-    console.error('Error processing investor signup:', error);
-    return Response.json(
-      { error: 'Internal server error. Please try again.' },
+    console.error('Error processing entrepreneur signup:', error);
+    
+    // Return appropriate error response
+    return NextResponse.json(
+      { 
+        success: false,
+        error: 'Internal server error. Please try again later.',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     );
   }
+}
+
+// Comprehensive validation function
+function validateFormData(formData) {
+  const errors = [];
+
+  // Required company fields
+  const requiredCompanyFields = {
+    Name: 'Company Legal Name',
+    email: 'Email',
+    phone: 'Phone',
+    type: 'Industry_Type',
+    location: 'Location ',
+  };
+
+  for (const [field, label] of Object.entries(requiredCompanyFields)) {
+    if (!formData[field] || formData[field].toString().trim() === '') {
+      errors.push(`${label} is required`);
+    }
+  }
+
+  // Email validation
+  if (formData.email && !isValidEmail(formData.email)) {
+    errors.push('Please provide a valid email address');
+  }
+
+  // Phone validation
+  if (formData.phone && !isValidPhone(formData.phone)) {
+    errors.push('Please provide a valid phone number');
+  }
+
+  return errors;
+}
+
+
+
+// Helper validation functions
+function isValidEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+function isValidPhone(phone) {
+  // Basic phone validation - adjust regex based on your requirements
+  const phoneRegex = /^[\+]?[\d\s\-\(\)]{10,}$/;
+  return phoneRegex.test(phone);
+}
+
+function isValidUrl(url) {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Optional: Handle other HTTP methods
+export async function GET() {
+  return NextResponse.json(
+    { error: 'Method not allowed' },
+    { status: 405 }
+  );
+}
+
+export async function PUT() {
+  return NextResponse.json(
+    { error: 'Method not allowed' },
+    { status: 405 }
+  );
+}
+
+export async function DELETE() {
+  return NextResponse.json(
+    { error: 'Method not allowed' },
+    { status: 405 }
+  );
 }
