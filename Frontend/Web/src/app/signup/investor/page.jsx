@@ -52,22 +52,7 @@ export default function InvestorSignup() {
   };
 
   const handleSubmit = async () => {
-    // try {
-    //   const response = await fetch('/api/signup/investor', {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify(formData)
-    //   });
 
-    //   if (response.ok) {
-    //     window.location.href = '/dashboard';
-    //   } else {
-    //     alert('Failed to submit application. Please try again.');
-    //   }
-    // } catch (error) {
-    //   console.error('Submission error:', error);
-    //   alert('Failed to submit application. Please try again.');
-    // }
     window.location.href = '/dashboard_02/inestor';
   };
 
