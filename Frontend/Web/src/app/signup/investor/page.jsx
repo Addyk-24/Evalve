@@ -52,7 +52,7 @@ export default function InvestorSignup() {
   };
 
   const handleSubmit = async () => {
-
+    // here we would have request
     window.location.href = '/dashboard_02/inestor';
   };
 
