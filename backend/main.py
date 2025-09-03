@@ -9,6 +9,8 @@ from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+
+import asyncio
 from pydantic import BaseModel,HttpUrl
 from typing import Optional, List, Dict, Any
 
@@ -57,29 +59,37 @@ class Founder(BaseModel):
 class StartupProfile(BaseModel):
     companyLegalName: str
     companyBrandName: Optional[str]
-    industry_sector: str
+    registrationStatus: Optional[str] = None
+    industry: str
     stage: str
-    funding_stage: Optional[str]
-    funding_amount_required: Optional[float]
     city: str
     state: str
     website: Optional[HttpUrl]
     email: str
     phone: str
+
+    # Business Model Details
     problemStatement: str
     solutionDescription: str
     targetMarket: str
     revenueModel: str
     pricingStrategy: Optional[str]
     competitiveAdvantage: str
+
+    # Team and Operations
     teamSize: int
     techStack: Optional[str]
     operationalMetrics: Optional[str]
+
+    # Financial Information
     monthlyRevenue: Optional[float]
     burnRate: Optional[float]
     cashPosition: Optional[float]
     revenueProjections: Optional[str]
     breakEvenTimeline: Optional[str]
+
+    # Founders List
+    founders : Optional[List[Founder]]  
 
 class InvestorProfile(BaseModel):
     name : str
@@ -94,6 +104,101 @@ class InvestorProfile(BaseModel):
     preferred_industries: Optional[dict]
     geographic_focus: Optional[dict]
 
+def map_frontend_to_db(frontend_data: dict) -> dict:
+    """Map frontend field names to database column names"""
+    
+    # Frontend to DB field mapping for startup data
+    startup_mapping = {
+        'companyLegalName': 'company_name',
+        'companyBrandName': 'brand_name',
+        'registrationStatus': 'registration_status',
+        'industry': 'industry_sector',  
+        'stage': 'stage',
+        'city': 'location_city',
+        'state': 'location_state',
+        'website': 'website',
+        'email': 'contact_email',
+        'phone': 'contact_phone',
+        'problemStatement': 'problem_statement',
+        'solutionDescription': 'solution_description',
+        'targetMarket': 'target_market',
+        'revenueModel': 'revenue_model',
+        'pricingStrategy': 'pricing_strategy',
+        'competitiveAdvantage': 'competitive_advantage',
+        'monthlyRevenue': 'monthly_revenue',
+        'burnRate': 'monthly_burn_rate',
+        'cashPosition': 'current_cash_position',
+        'breakEvenTimeline': 'break_even_timeline',
+        'teamSize': 'team_size',
+        'techStack': 'technology_stack',
+        'operationalMetrics': 'operational_metrics',
+        'revenueProjections': 'revenue_projections'
+    }
+    
+    # Frontend to DB field mapping for founder data
+    founder_mapping = {
+        'name': 'name',
+        'role': 'role',
+        'education': 'education_degree',
+        'institution': 'education_institution',
+        'experience': 'professional_experience',
+        'equityShare': 'equity_stake',
+        'linkedIn': 'linkedin_profile'
+    }
+    
+    # Map startup data
+    mapped_startup = {}
+    for frontend_key, db_key in startup_mapping.items():
+        if frontend_key in frontend_data:
+            value = frontend_data[frontend_key]
+            
+            # Handle special conversions
+            if db_key in ['monthly_revenue', 'monthly_burn_rate', 'current_cash_position']:
+                mapped_startup[db_key] = float(value) if value else None
+            elif db_key == 'team_size':
+                mapped_startup[db_key] = int(value) if value else 1
+            elif db_key == 'technology_stack':
+                mapped_startup[db_key] = [value] if value else []
+            elif db_key == 'operational_metrics':
+                mapped_startup[db_key] = {}
+            elif db_key == 'revenue_projections':
+                mapped_startup[db_key] = {}
+            else:
+                mapped_startup[db_key] = value
+    
+    # Add default values for required fields
+    defaults = {
+        'registration_status': 'Unregistered',
+        'funding_amount_required': 0,
+        'funding_stage': 'Pre-seed',
+        'previous_funding': 0,
+        'current_customers': 0,
+        'key_achievements': [],
+        'use_of_funds': {}
+    }
+    
+    for key, default_value in defaults.items():
+        if key not in mapped_startup:
+            mapped_startup[key] = default_value
+    
+    # Map founders data
+    mapped_founders = []
+    if 'founders' in frontend_data:
+        for founder in frontend_data['founders']:
+            mapped_founder = {}
+            for frontend_key, db_key in founder_mapping.items():
+                if frontend_key in founder:
+                    value = founder[frontend_key]
+                    if db_key == 'equity_stake':
+                        mapped_founder[db_key] = float(value) if value else None
+                    else:
+                        mapped_founder[db_key] = value
+            
+            # Add defaults
+            mapped_founder['is_primary_founder'] = False
+            mapped_founders.append(mapped_founder)
+    
+    return mapped_startup, mapped_founders
 
 
 app = FastAPI(
@@ -105,8 +210,10 @@ app = FastAPI(
 # CORS middleware for development
 origins = [
     "http://localhost:3000",
+    "http://localhost:4000", 
     "http://localhost:5173",
     "http://127.0.0.1:3000",
+    "http://127.0.0.1:4000",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:4001",
 ]
@@ -160,13 +267,45 @@ def create_inverstor(data: InvestorProfile):
 
 
 @app.post("/api/signup/entrepreneur")
-def create_entrepreneur(data: StartupProfile):
+async def create_entrepreneur(request: Request):
     """ Create Entrepreneur Signup"""
     if not dm:
         raise HTTPException(status_code=503, detail="Database service unavailable")
     try:
-        new_entry = dm.save_startup_profile(data.model_dump())
-        return {"status": "success", "id": new_entry.get("id")}
+        raw_data = await request.json()
+
+        startup_data, founders_data = map_frontend_to_db(raw_data)
+
+        print("Mapped startup data:", startup_data)  # Debug log
+
+
+        # Save Startup
+        new_entry = dm.save_startup_profile(startup_data)
+        startup_id = new_entry
+
+        print("Database save result:", new_entry)  # Debug log
+
+        # Check if save was successful
+        if new_entry is None:
+            raise HTTPException(status_code=500, detail="Failed to save startup profile to database")
+
+        # Save founders if provided
+        if founders_data:
+                dm.save_founders(startup_id,founders_data)
+
+                # # Convert equityShare to float if it's a string
+                # if 'equityShare' in founder_data and founder_data['equityShare']:
+                #     try:
+                #         founder_data['equityShare'] = float(founder_data['equityShare'])
+                #     except (ValueError, TypeError):
+                #         founder_data['equityShare'] = None
+                
+                # # Handle LinkedIn URL field name mapping
+                # if 'linkedIn' in founder_data:
+                #     founder_data['linkedin_profile'] = founder_data.pop('linkedIn')
+
+        return {"status": "success", "id": new_entry}
+    
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

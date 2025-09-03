@@ -263,6 +263,8 @@ class DatabaseManager:
             print(f"❌ Error saving startup profile: {str(e)}")
             return None
     
+    # =================== UTILITY METHODS ===================
+    
     def _safe_float_conversion(self, value) -> Optional[float]:
         """Safely convert value to float"""
         if value is None or value == '':
@@ -469,6 +471,10 @@ class DatabaseManager:
             
         try:
             for founder in founders:
+                if not isinstance(founder, dict):
+                    print(f"❌ Invalid founder data (not a dict): {founder}")
+                    continue  # Skip invalid items
+
                 if not founder.get('name'):
                     continue  # Skip founders without names
                     
