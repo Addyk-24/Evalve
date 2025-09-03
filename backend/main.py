@@ -260,7 +260,12 @@ def create_inverstor(data: InvestorProfile):
         raise HTTPException(status_code=503, detail="Database service unavailable")
     try: 
         new_investor_entry = dm.save_investor_profile(data.model_dump())
-        return {"status": "success", "id": new_investor_entry.get("id")}
+        print("Database save result:", new_investor_entry)  # Debug log
+        # Check if save was successful
+        if new_investor_entry is None:
+            raise HTTPException(status_code=500, detail="Failed to save startup profile to database")
+
+        return {"status": "success", "id": new_investor_entry}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     

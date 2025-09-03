@@ -52,22 +52,57 @@ export default function InvestorSignup() {
   };
 
   const handleSubmit = async () => {
-    // try {
-    //   const response = await fetch('/api/signup/investor', {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify(formData)
-    //   });
+    try {
+    const requiredFields = {
+      name: 'Investor name',
+      email: 'Email',
+      phone: 'Phone number',
+      location: 'Location ',
+      investor_type: 'Investor type',
+    }
+    const missingFields = [];
+    for (const [field, label] of Object.entries(requiredFields)) {
+      if (!formData[field] || formData[field].trim() === '') {
+        missingFields.push(label);
+      }
+    }
+    if (missingFields.length > 0) {
+      alert('Please fill in the following required fields:\n\n' + missingFields.join('\n'));
+      return;
+    }
 
-    //   if (response.ok) {
-    //     window.location.href = '/dashboard';
-    //   } else {
-    //     alert('Failed to submit application. Please try again.');
-    //   }
-    // } catch (error) {
-    //   console.error('Submission error:', error);
-    //   alert('Failed to submit application. Please try again.');
-    // }
+    // Transform data to match backend model
+    const transformedData = {
+      name: formData.firstName + ' ' + formData.lastName,
+      email: formData.email,
+      phone: formData.phone,
+      linkedin: formData.linkedIn,
+      location: formData.location,
+      investor_type: formData.investorType,
+      organization: formData.organization,
+      title: formData.title,
+      experience: formData.experience,
+      investment_stage: formData.investmentStage,
+      industry_focus: formData.industryFocus,
+      geography_focus: formData.geographyFocus,
+      investment_range: formData.investmentRange,
+      previous_investments: formData.previousInvestments,
+      portfolio_size: formData.portfolioSize,
+    }
+    console.log('Submitting transformed data:', transformedData);
+    const apiUrl = 'http://localhost:8000'
+    const response = await fetch(`${apiUrl}/api/signup/entrepreneur`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(transformedData)
+    });
+
+    console.log('Response status:', response.status);
+
+    }
     window.location.href = '/dashboard_02/inestor';
   };
 
