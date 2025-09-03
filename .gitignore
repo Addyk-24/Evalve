@@ -3,6 +3,7 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+.env.local
 error.py
 new.py
 demo-app.py
