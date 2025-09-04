@@ -157,6 +157,7 @@ export default function InvestorSignup() {
       if (result.status === 'success') {
         alert('Application submitted successfully! We will review your application and get back to you within 2-3 business days.');
         // Redirect or handle success
+        window.location.href = '/dashboard';
         if (result.redirectUrl) {
           window.location.href = result.redirectUrl;
         }
