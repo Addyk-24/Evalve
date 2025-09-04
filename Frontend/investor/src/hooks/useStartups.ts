@@ -1,4 +1,3 @@
-// src/hooks/useStartups.ts
 import { useState, useEffect } from 'react';
 import { Startup } from '@/data/startups';
 import { apiService, mapApiStartupToStartup } from '@/services/api';

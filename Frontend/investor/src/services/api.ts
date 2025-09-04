@@ -1,4 +1,3 @@
-// src/services/api.ts - Fixed version
 const API_BASE_URL = 'http://localhost:8000';
 
 export interface Startup {
