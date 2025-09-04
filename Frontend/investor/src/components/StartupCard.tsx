@@ -1,5 +1,5 @@
 import React from 'react';
-import { Startup } from '@/data/startups';
+import { Startup } from '@/services/api';
 import { Calendar, MapPin, Users, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -15,12 +15,16 @@ const StartupCard: React.FC<StartupCardProps> = ({ startup }) => {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
-    });
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    } catch {
+      return 'Date not available';
+    }
   };
 
   return (

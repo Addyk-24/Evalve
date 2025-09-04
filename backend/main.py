@@ -215,12 +215,14 @@ origins = [
     "http://127.0.0.1:4000",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:4001",
+    "http://localhost:8080",  # Common dev server port
+    "http://127.0.0.1:8080",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -309,9 +311,9 @@ async def create_entrepreneur(request: Request):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-
 @app.get("/api/startups", response_model=List[Dict[str, Any]])
-def get_all_startup(limit: int = 50,
+def get_all_startup(
+    limit: int = 50,
     industry_sector: Optional[str] = None,
     stage: Optional[str] = None,
     funding_stage: Optional[str] = None
@@ -337,7 +339,7 @@ def get_all_startup(limit: int = 50,
 
 @app.get("/api/startups/{startup_id}")
 def get_specific_startup(startup_id:str):
-    """ Get Specific Startup Profile"""
+    """ Get Specific Startup Profile And Insights"""
     if not dm or not ea:
         raise HTTPException(status_code=503, detail="Required services unavailable")
     try:
@@ -347,40 +349,20 @@ def get_specific_startup(startup_id:str):
             raise HTTPException(status_code=404, detail="Startup not found")
 
         try:
-
             specific_profile_insights = ea.get_startup_insight(specific_profile)
         except Exception as e:
             print(f"Error getting insights: {e}")
             specific_profile_insights = {"error": "Could not generate insights"}
 
-        return {f"{specific_profile.get('company_name')}" : {specific_profile},
-                "Insights" : {specific_profile_insights}
+        return {"Startup" : specific_profile,
+                "Insights" : specific_profile_insights
                 }
     except HTTPException:
-        raise  # Re-raise HTTP exceptions
+        # HTTP exceptions
+        raise  
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching startup: {str(e)}")
 
-# Get startup insights only - yeppp
-@app.get("/api/startups/{startup_id}/insight")
-def get_startup_insight(startup_id: str):
-    """Get AI insights for a specific startup"""
-    if not dm or not ea:
-        raise HTTPException(status_code=503, detail="Required services unavailable")
-    
-    try:
-        startup_profile = dm.get_startup_by_name_or_id(startup_id)
-        if not startup_profile:
-            raise HTTPException(status_code=404, detail="Startup not found")
-        
-        insights = ea.get_startup_insight(startup_profile)
-        return insights
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating insights: {str(e)}")
-    
 
 @app.post("/api/startups/{startup_id}/chat", response_model=ChatResponse)
 def specific_profile_chat(startup_id:str, req: ChatModel):
