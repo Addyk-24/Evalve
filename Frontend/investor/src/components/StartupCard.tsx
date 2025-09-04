@@ -12,6 +12,8 @@ const StartupCard: React.FC<StartupCardProps> = ({ startup }) => {
 
   const handleInvestClick = () => {
     navigate(`/startup/${startup.id}`);
+    
+
   };
 
   const formatDate = (dateString: string) => {

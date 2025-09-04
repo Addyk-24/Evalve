@@ -17,7 +17,7 @@ export interface Startup {
 
 // This should match your database schema
 export interface ApiStartup {
-  id: string;
+  startup_id: string;
   company_name: string;
   brand_name?: string;
   registration_status?: string;
@@ -63,7 +63,7 @@ export interface StartupDetailResponse {
 // Convert API response to frontend Startup interface
 export const mapApiStartupToStartup = (apiStartup: ApiStartup): Startup => {
   return {
-    id: apiStartup.id,
+    id: apiStartup.startup_id,  
     name: apiStartup.company_name,
     founderName: 'N/A', // You might need to get this from founders table
     revenueRaised: apiStartup.previous_funding?.toString() || '$0',
