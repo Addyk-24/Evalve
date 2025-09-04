@@ -1,29 +1,67 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { mockStartups } from '@/data/startups';
-import { ArrowLeft, TrendingUp, Users, Calendar, MapPin, Globe, Building } from 'lucide-react';
+import { useStartup } from '@/hooks/useStartups';
+import { ArrowLeft, TrendingUp, Users, Calendar, MapPin, Globe, Building, Loader2, AlertCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import StartupChatbot from '@/components/StartupChatbot';
 
 const StartupDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  
-  const startup = mockStartups.find(s => s.id === id);
+  const { startup, insights, loading, error, refetch } = useStartup(id);
 
-  if (!startup) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Startup Not Found</h1>
-            <button
-              onClick={() => navigate('/')}
-              className="btn-invest"
-            >
-              Back to Startups
-            </button>
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
+            <h1 className="text-xl font-semibold mb-2">Loading startup details...</h1>
+            <p className="text-muted-foreground">Please wait while we fetch the information</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !startup) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="max-w-4xl mx-auto px-6 py-8">
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-8"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Startups
+          </button>
+          
+          <div className="bg-red-50 border border-red-200 rounded-lg p-8">
+            <div className="text-center">
+              <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-600" />
+              <h1 className="text-2xl font-bold mb-4 text-red-800">
+                {error === 'Startup not found' ? 'Startup Not Found' : 'Error Loading Startup'}
+              </h1>
+              <p className="text-red-700 mb-6">
+                {error || 'Something went wrong while loading the startup details'}
+              </p>
+              <div className="flex gap-4 justify-center">
+                <button
+                  onClick={() => navigate('/')}
+                  className="btn-invest"
+                >
+                  Back to Startups
+                </button>
+                <button
+                  onClick={() => refetch()}
+                  className="px-6 py-3 border border-red-300 text-red-700 rounded-lg font-medium hover:bg-red-50 transition-colors"
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -31,12 +69,16 @@ const StartupDetail = () => {
   }
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+    } catch {
+      return 'Date not available';
+    }
   };
 
   return (
@@ -142,6 +184,31 @@ const StartupDetail = () => {
             </p>
           </div>
 
+          {/* AI Insights Section */}
+          {insights && !insights.error && (
+            <div className="mb-8 p-4 bg-accent/50 rounded-lg border">
+              <h2 className="text-xl font-bold text-card-foreground mb-4">
+                <span className="inline-flex items-center gap-2">
+                  🤖 AI Insights
+                </span>
+              </h2>
+              <div className="text-muted-foreground">
+                {typeof insights === 'string' ? (
+                  <p className="leading-relaxed">{insights}</p>
+                ) : (
+                  <div className="space-y-2">
+                    {Object.entries(insights).map(([key, value]) => (
+                      <div key={key} className="border-l-2 border-primary pl-3">
+                        <p className="font-medium text-foreground capitalize">{key.replace(/_/g, ' ')}:</p>
+                        <p className="text-sm">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {startup.website && (
             <div className="mb-8">
               <div className="flex items-center gap-3">
@@ -151,7 +218,7 @@ const StartupDetail = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Website</p>
                   <a 
-                    href={`https://${startup.website}`} 
+                    href={startup.website.startsWith('http') ? startup.website : `https://${startup.website}`} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="text-lg font-semibold text-primary hover:underline"
@@ -174,7 +241,7 @@ const StartupDetail = () => {
         </div>
       </div>
       
-      {/* Chatbot */}
+      {/* Chatbot - Only show if startup data is available */}
       <StartupChatbot startup={startup} />
     </div>
   );
