@@ -226,7 +226,24 @@ class EvalveAgent:
         """Retrieve Specific Startup Insights by company name or startup ID"""
         try:
             # Define query first
-            query = f"Generate investment insights and analysis about startup/company: {company_identifier} and restrictly be 100% sure then only state that statement"
+            query = f"""Generate investment insights and analysis about startup/company: {company_identifier} and
+        
+        You are an experienced investment analyst. Based strictly on the given startup profile, 
+        generate a structured investment analysis including:
+        - Executive Summary
+        - Key Strengths
+        - Major Risks
+        - Market Analysis
+        - Financial Outlook
+        - Investment Recommendation (with score 1-10)
+        
+        Return ONLY valid JSON, no explanations, no markdown.
+        
+
+        Do NOT refuse or say you cannot verify. If information is missing, make 
+        reasonable assumptions and clearly label them as assumptions.
+            
+            """
             
             # Get startup data from database (by name or ID)
             startup_data = self.get_startup_by_name_or_id(company_identifier)
@@ -252,7 +269,11 @@ class EvalveAgent:
             
             # Extract string content from response
             response_content = str(response.content) if hasattr(response, 'content') else str(response)
-                        
+
+            try:
+                parsed_response = json.loads(response_content)
+            except Exception:
+                parsed_response = {"raw_response": response_content}
             # Extract context used
             context_used = startup_context
             if hasattr(response, 'tool_calls') and response.tool_calls:
@@ -267,12 +288,13 @@ class EvalveAgent:
             self._update_memory_graph(query, response_content)
             
             return {
-                "response": response_content,
+                # "response": response_content,
+                "response": parsed_response,
                 "context": context_used,
-                "session_id": session_id,
-                "timestamp": datetime.now().isoformat(),
-                "company_identifier": company_identifier,
-                "found_in_db": startup_data is not None
+                # "session_id": session_id,
+                # "timestamp": datetime.now().isoformat(),
+                # "company_identifier": company_identifier,
+                # "found_in_db": startup_data is not None
             }
             
         except Exception as e:
