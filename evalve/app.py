@@ -69,10 +69,10 @@ class EvalveAgent:
         self.conversation_memory = ConversationMemory()
         
         # Initialize AI agent
-        self.create_startup_analysis_team()
+        self.create_agents()
 
     def create_agents(self):
-        insights_generator = Agent(
+        self.insights_generator = Agent(
             name="StartupInsightsAnalyst",
             role="Senior Investment Analyst for Indian Startups",
             model=llm,
@@ -87,7 +87,7 @@ class EvalveAgent:
             markdown=False
         )
 
-        startup_chatbot = Agent(
+        self.startup_chatbot = Agent(
             name="StartupConsultantChatbot",
             role="Expert Startup Consultant for Interactive Queries",
             model=llm,
@@ -97,42 +97,13 @@ class EvalveAgent:
                 "understand specific startups through conversational queries."
             ),
             instructions=[self.sys_prompt.Startup_Knowledge],
-            tools=[SerpApiTools(search_youtube=True)],
+            tools=[SerpApiTools(api_key=SERPAPI_KEY,search_youtube=True)],
             add_datetime_to_instructions=True,
             show_tool_calls=False,
-            markdown=False
+            markdown=True
         )
         
-        return insights_generator, startup_chatbot
 
-    def create_startup_analysis_team(self):
-        insights_generator, startup_chatbot = self.create_agents()
-        
-        self.startup_analysis_team = Team(
-            name="StartupAnalysisTeam",
-            mode="coordinate",
-            model=llm,
-            members=[insights_generator, startup_chatbot],
-            description=(
-                "You are a senior startup analysis team specializing in Indian startup evaluation. "
-                "Your goal is to provide comprehensive startup analysis and interactive investor support."
-            ),
-            instructions=[
-                "First, have the StartupInsightsAnalyst generate comprehensive investment insights for the startup.",
-                "Then, be ready to have the StartupConsultantChatbot answer any specific investor questions about the startup.",
-                "Ensure both agents work together to provide complete, accurate, and actionable information.",
-                "Focus on Indian market dynamics, opportunities, and challenges.",
-                "Maintain consistency between insights and chatbot responses.",
-                "Provide both high-level strategic analysis and detailed operational information as needed.",
-                "Remember: Your analysis directly impacts investment decisions in the Indian startup ecosystem."
-            ],
-            add_datetime_to_instructions=True,
-            add_member_tools_to_system_message=False,
-            enable_agentic_context=False,
-            share_member_interactions=False,
-            show_members_responses=False,
-            markdown=False
-        )
 
     def safe_format(self, value, default="N/A"):
         """Safely format values that might be None"""
@@ -270,24 +241,9 @@ class EvalveAgent:
             conversation_context = self.conversation_memory.get_context_string()
             relevant_history = self.conversation_memory.get_relevant_history(query)
             
-            # Create a simple agent instead of using the team to avoid tool issues
-            insights_generator = Agent(
-                name="StartupInsightsAnalyst",
-                role="Senior Investment Analyst for Indian Startups",
-                model=llm,
-                description=(
-                    "You are a senior investment analyst specializing in Indian startup evaluation. "
-                    "Your goal is to generate comprehensive, data-driven insights about startups to help "
-                    "investors make informed investment decisions in the Indian market."
-                ),
-                instructions=[self.sys_prompt.startup_insight],
-                add_datetime_to_instructions=True,
-                show_tool_calls=False,
-                markdown=False
-            )
             
             # Get response from simple agent
-            response = insights_generator.run(query)
+            response = self.insights_generator.run(query)
             
             # Extract string content from response
             response_content = str(response.content) if hasattr(response, 'content') else str(response)
@@ -317,7 +273,7 @@ class EvalveAgent:
             
             return {
                 "response": parsed_response,
-                "context": startup_context
+                # "context": conversation_context
             }
             
         except Exception as e:
@@ -360,10 +316,11 @@ Note: No detailed database record found for this startup. Please use web search 
             enhanced_query = self._enhance_query_with_context(query_with_context, conversation_context, relevant_history)
             
             # Get response from team
-            response = self.startup_analysis_team.run(enhanced_query)
+            response = self.startup_chatbot.run(enhanced_query)
 
             # Extract string content from response
             response_content = str(response.content) if hasattr(response, 'content') else str(response)
+                
                 
             # Extract context used
             context_used = startup_context
@@ -373,30 +330,24 @@ Note: No detailed database record found for this startup. Please use web search 
                         context_used += str(tool_call.result) + "\n"
             
             # Save conversation
-            self.conversation_memory.add_exchange(query, response_content, context_used, session_id)
+            try:
+                self.conversation_memory.add_exchange(query, response_content, startup_context, session_id)
+            except Exception as e:
+                print(f"[EvalveAgent] Error saving conversation: {e}")
             
             # Update memory graph
-            self._update_memory_graph(query, response_content)
+            try:
+                self._update_memory_graph(query, response_content)
+            except Exception as e:
+                print(f"[EvalveAgent] Error updating memory graph: {e}")
             
-            return {
-                "response": response_content,
-                "context": context_used,
-                "session_id": session_id,
-                "timestamp": datetime.now().isoformat(),
-                "company_identifier": company_identifier,
-                "found_in_db": startup_data is not None
-            }
+            return response_content
             
         except Exception as e:
             error_msg = f"Error processing chatbot query: {str(e)}"
-            return {
-                "response": error_msg,
-                "context": "",
-                "session_id": session_id,
-                "timestamp": datetime.now().isoformat(),
-                "company_identifier": company_identifier,
-                "error": True
-            }
+
+            print(f"[EvalveAgent] Chatbot error: {error_msg}")
+            return f"I apologize, but I'm experiencing technical difficulties right now. However, I can tell you that you're asking about {company_identifier}. Please try asking your question again, or check the startup's detailed profile for more information."
                     
     def _enhance_query_with_context(self, query: str, conversation_context: str, relevant_history: List[Dict]) -> str:
         """Enhance query with conversation context"""
