@@ -26,6 +26,9 @@ from supabase import create_client
 
 from typing import List, Dict, Any, Optional
 
+# from agno.models.ollama import Ollama
+
+
 import os
 import json
 import re
@@ -49,7 +52,9 @@ SERPAPI_KEY = os.environ.get("SERPAPI_KEY")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 # llm = OpenAIChat(id="gpt-4o")
-llm = Groq(id="openai/gpt-oss-20b")
+# llm = Groq(id="openai/gpt-oss-20b")
+llm = Groq(id="llama-3.1-8b-instant")
+# llm = Ollama(id="llama3.1")
 
 class EvalveAgent:
     """Main RAG agent that combines all components"""
@@ -77,10 +82,9 @@ class EvalveAgent:
                 "investors make informed investment decisions in the Indian market."
             ),
             instructions=[self.sys_prompt.startup_insight],
-            tools=[],  
             add_datetime_to_instructions=True,
-            show_tool_calls=True,
-            markdown=True
+            show_tool_calls=False,
+            markdown=False
         )
 
         startup_chatbot = Agent(
@@ -96,7 +100,7 @@ class EvalveAgent:
             tools=[SerpApiTools(search_youtube=True)],
             add_datetime_to_instructions=True,
             show_tool_calls=False,
-            markdown=True
+            markdown=False
         )
         
         return insights_generator, startup_chatbot
@@ -124,10 +128,10 @@ class EvalveAgent:
             ],
             add_datetime_to_instructions=True,
             add_member_tools_to_system_message=False,
-            enable_agentic_context=True,
-            share_member_interactions=True,
-            show_members_responses=True,
-            markdown=True
+            enable_agentic_context=False,
+            share_member_interactions=False,
+            show_members_responses=False,
+            markdown=False
         )
 
     def safe_format(self, value, default="N/A"):
@@ -222,88 +226,107 @@ class EvalveAgent:
     """
             return basic_startup_context
 
+    # In your evalve/app.py, update the get_startup_insight method:
+
     def get_startup_insight(self, company_identifier: str, session_id: str = "default", use_web: bool = False):
         """Retrieve Specific Startup Insights by company name or startup ID"""
         try:
-            # Define query first
-            query = f"""Generate investment insights and analysis about startup/company: {company_identifier} and
-        
-        You are an experienced investment analyst. Based strictly on the given startup profile, 
-        generate a structured investment analysis including:
-        - Executive Summary
-        - Key Strengths
-        - Major Risks
-        - Market Analysis
-        - Financial Outlook
-        - Investment Recommendation (with score 1-10)
-        
-        Return ONLY valid JSON, no explanations, no markdown.
-        
-
-        Do NOT refuse or say you cannot verify. If information is missing, make 
-        reasonable assumptions and clearly label them as assumptions.
-            
-            """
-            
             # Get startup data from database (by name or ID)
             startup_data = self.get_startup_by_name_or_id(company_identifier)
             startup_context = ""
             
             if startup_data:
                 startup_context = self.format_startup_context(startup_data)
-                query += f"\n\nStartup Data:\n{startup_context}"
             else:
-                # If no data found in DB, still provide the identifier for web search
                 startup_context = f"No database record found for: {company_identifier}. Please search for information about this startup online."
-                query += f"\n\nNote: {startup_context}"
+            
+            # Define query - SIMPLIFIED to avoid tool schema issues
+            query = f"""You are an experienced investment analyst. Analyze the startup: {company_identifier}
+
+    Based on the provided startup profile, generate a comprehensive investment analysis in valid JSON format with these exact fields:
+
+    {{
+        "executive_summary": "Brief overview of the startup and investment opportunity",
+        "key_strengths": ["strength1", "strength2", "strength3"],
+        "major_risks": ["risk1", "risk2", "risk3"],
+        "market_analysis": "Analysis of market opportunity and competitive landscape",
+        "financial_outlook": "Assessment of financial projections and sustainability",
+        "investment_recommendation": {{
+            "score": 7,
+            "stage": "Series A",
+            "terms": "Suggested investment terms",
+            "milestones": ["milestone1", "milestone2"]
+        }},
+        "assumptions": ["assumption1", "assumption2"]
+    }}
+
+    Startup Context:
+    {startup_context}
+
+    Return ONLY valid JSON, no additional text or formatting.
+    """
             
             # Get conversation context
             conversation_context = self.conversation_memory.get_context_string()
             relevant_history = self.conversation_memory.get_relevant_history(query)
             
-            # Enhance query with context
-            enhanced_query = self._enhance_query_with_context(query, conversation_context, relevant_history)
+            # Create a simple agent instead of using the team to avoid tool issues
+            insights_generator = Agent(
+                name="StartupInsightsAnalyst",
+                role="Senior Investment Analyst for Indian Startups",
+                model=llm,
+                description=(
+                    "You are a senior investment analyst specializing in Indian startup evaluation. "
+                    "Your goal is to generate comprehensive, data-driven insights about startups to help "
+                    "investors make informed investment decisions in the Indian market."
+                ),
+                instructions=[self.sys_prompt.startup_insight],
+                add_datetime_to_instructions=True,
+                show_tool_calls=False,
+                markdown=False
+            )
             
-            # Get response from team
-            response = self.startup_analysis_team.run(enhanced_query)
+            # Get response from simple agent
+            response = insights_generator.run(query)
             
             # Extract string content from response
             response_content = str(response.content) if hasattr(response, 'content') else str(response)
-
+            
+            # Try to parse as JSON
             try:
-                parsed_response = json.loads(response_content)
-            except Exception:
-                parsed_response = {"raw_response": response_content}
-            # Extract context used
-            context_used = startup_context
-            if hasattr(response, 'tool_calls') and response.tool_calls:
-                for tool_call in response.tool_calls:
-                    if hasattr(tool_call, 'result'):
-                        context_used += str(tool_call.result) + "\n"
+                # Clean the response content first
+                cleaned_content = response_content.strip()
+                
+                # Remove any markdown formatting if present
+                if cleaned_content.startswith('```json'):
+                    cleaned_content = cleaned_content.replace('```json', '').replace('```', '').strip()
+                elif cleaned_content.startswith('```'):
+                    cleaned_content = cleaned_content.replace('```', '').strip()
+                
+                parsed_response = json.loads(cleaned_content)
+            except json.JSONDecodeError as e:
+                print(f"JSON parsing error: {e}")
+                # Fallback to string response
+                parsed_response = {
+                    "executive_summary": response_content,
+                    "error": "Failed to parse structured response"
+                }
             
             # Save conversation
-            self.conversation_memory.add_exchange(query, response_content, context_used, session_id)
-            
-            # Update memory graph
-            self._update_memory_graph(query, response_content)
+            self.conversation_memory.add_exchange(query, response_content, startup_context, session_id)
             
             return {
-                # "response": response_content,
                 "response": parsed_response,
-                "context": context_used,
-                # "session_id": session_id,
-                # "timestamp": datetime.now().isoformat(),
-                # "company_identifier": company_identifier,
-                # "found_in_db": startup_data is not None
+                "context": startup_context
             }
             
         except Exception as e:
             error_msg = f"Error processing startup insight request: {str(e)}"
+            print(f"EvalveAgent Error: {error_msg}")
             return {
-                "response": error_msg,
+                "response": {"error": error_msg},
                 "context": "",
                 "session_id": session_id,
-                "timestamp": datetime.now().isoformat(),
                 "company_identifier": company_identifier,
                 "error": True
             }
