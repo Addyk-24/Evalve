@@ -83,7 +83,7 @@ export default function InvestorSignup() {
     "Corporate Investor": "Corporate"
   };
 
-
+  // Main Start
   try {
       // Check required fields before submission
       const requiredFields = {
@@ -121,8 +121,7 @@ export default function InvestorSignup() {
       };
 
       console.log('Submitting transformed data:', transformedData);
-
-      // Update API URL to use Next.js API route
+      
       const apiUrl = 'http://localhost:8000'
       const response = await fetch(`${apiUrl}/api/signup/investor`, {
         method: 'POST',
