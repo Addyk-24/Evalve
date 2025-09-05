@@ -215,7 +215,7 @@ origins = [
     "http://127.0.0.1:4000",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:4001",
-    "http://localhost:8080",  # Common dev server port
+    "http://localhost:8080",
     "http://127.0.0.1:8080",
 ]
 
@@ -378,7 +378,7 @@ def specific_profile_chat(startup_id:str, req: ChatModel):
 
         session_id = req.session_id or cm._generate_session_id()
 
-        response = ea.get_startup_chatbot(req.query,startup_id,req.session_id)
+        response = ea.get_startup_chatbot(req.query,startup_id,session_id)
 
         return ChatResponse(
             response=response,

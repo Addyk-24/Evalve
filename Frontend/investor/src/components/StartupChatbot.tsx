@@ -3,6 +3,7 @@ import { MessageCircle, Send, X, Bot, User } from 'lucide-react';
 
 interface StartupChatbotProps {
   startup: {
+    id?: string;
     name: string;
     description: string;
     founderName: string;
@@ -91,7 +92,9 @@ const StartupChatbot: React.FC<StartupChatbotProps> = ({ startup }) => {
     return `That's a great question about ${startup.name}! While I can provide general information about their ${startup.stage} stage status, ${startup.revenueRaised} in funding, and their focus on ${startup.domain}, I recommend reaching out to ${startup.founderName} directly for more specific details. Would you like me to help you formulate questions for the founder?`;
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
+    const baseUrl = 'http://localhost:8000'
+
     if (!inputMessage.trim()) return;
 
     const userMessage: Message = {
@@ -102,18 +105,52 @@ const StartupChatbot: React.FC<StartupChatbotProps> = ({ startup }) => {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const query = inputMessage;
     setInputMessage('');
 
-    // Simulate bot typing delay
-    setTimeout(() => {
+    try {
+      const res = await fetch(`${baseUrl}/api/startups/${startup.id}/chat`,{
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          {
+            query,
+            session_id: null
+          }),
+      });
+      if (!res.ok) throw new Error('Failed to fetch');
+      const data = await res.json();
+
+      // Now backend here will return response: {response,session_id,startup_id}
       const botResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: generateBotResponse(inputMessage),
+        text: data.response,
         isUser: false,
         timestamp: new Date()
       };
-      setMessages(prev => [...prev, botResponse]);
-    }, 1000);
+
+      setMessages(prev=> [...prev,botResponse]);
+
+    } catch (err) {
+    console.error(err);
+    const errorMsg: Message = {
+      id: (Date.now() + 2).toString(),
+      text: "⚠️ Sorry, I couldn’t connect to the server. Please try again.",
+      isUser: false,
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, errorMsg]);
+  }
+    // // Simulate bot typing delay
+    // setTimeout(() => {
+    //   const botResponse: Message = {
+    //     id: (Date.now() + 1).toString(),
+    //     text: generateBotResponse(inputMessage),
+    //     isUser: false,
+    //     timestamp: new Date()
+    //   };
+    //   setMessages(prev => [...prev, botResponse]);
+    // }, 1000);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
