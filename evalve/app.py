@@ -303,12 +303,20 @@ class EvalveAgent:
 You are answering questions about this specific startup:
 
 {self.format_startup_context(startup_data)}
+
+IMPORTANT: Provide conversational, natural responses. Do NOT return JSON or structured data. 
+Answer as if you're having a friendly conversation with an investor who wants to learn about this startup.
+Be informative but conversational. Use the startup information to provide specific, helpful answers.
+
 """
             else:
                 startup_context = f"""
 You are answering questions about: {company_identifier}
 
 Note: No detailed database record found for this startup. Please use web search to find relevant information and provide helpful insights based on available data.
+
+IMPORTANT: Provide conversational, natural responses. Do NOT return JSON or structured data.
+Answer as if you're having a friendly conversation with an investor.
 """
             
             # Get conversation context
