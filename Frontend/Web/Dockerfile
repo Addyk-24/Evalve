@@ -1,21 +1,11 @@
-# Build Stage
-FROM node:18 AS builder
+FROM node
 
-WORKDIR /app
-
-# Install deps
-COPY frontend/web/package.json frontend/web/package-lock.json ./
+WORKDIR /Web
+COPY package*.json ./
 RUN npm install
 
-# Copy code
-COPY frontend/web/ .
+COPY . . 
 
-# Build static files
-RUN npm run build
-
-
-
-# Expose port
 EXPOSE 4000
 
 CMD ["npm", "run", "dev"]

@@ -52,8 +52,8 @@ SERPAPI_KEY = os.environ.get("SERPAPI_KEY")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 # llm = OpenAIChat(id="gpt-4o")
-# llm = Groq(id="openai/gpt-oss-20b")
-llm = Groq(id="llama-3.1-8b-instant")
+llm = Groq(id="openai/gpt-oss-20b")
+# llm = Groq(id="llama-3.1-8b-instant")
 # llm = Ollama(id="llama3.1")
 
 class EvalveAgent:
