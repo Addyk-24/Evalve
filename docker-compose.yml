@@ -1,0 +1,40 @@
+version: "3.9"
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: evalve-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./backend:/app/backend
+      - ./evalve:/app/evalve
+      - ./database:/app/database
+      - ./memory:/app/memory
+
+  web:
+    build:
+      context: ./Frontend/Web
+      dockerfile: ../Dockerfile
+    container_name: evalve-web
+    ports:
+      - "4000:4000"
+
+  investor:
+    build:
+      context: ./Frontend/investor
+      dockerfile: ../Dockerfile
+    container_name: evalve-investor
+    ports:
+      - "8080:8080"
+
+  developer:
+    build:
+      context: ./Frontend/developer
+      dockerfile: ../Dockerfile
+    container_name: evalve-developer
+    ports:
+      - "8081:8081"
