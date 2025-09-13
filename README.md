@@ -72,9 +72,6 @@ Indev.ai bridges the gap between small startups, vendors, and investors by creat
 <img width="700" height="600" alt="image" src="https://github.com/user-attachments/assets/55b534dd-c1f3-47bb-a158-779d3303c13b" />
 
 
-## Demo Video
-
-
 ## 📊 Author 
 Aditya Katkar (Team Leader)
 
